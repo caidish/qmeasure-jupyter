@@ -1,0 +1,40 @@
+*.bundle.*
+*.egg-info/
+.ipynb_checkpoints
+.jupyter
+.pytest_cache
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+lib/
+node_modules/
+dist/
+qmeasure_jupyter/labextension
+qmeasure_jupyter/_version.py
+*.pyc
+__pycache__/
+build/
+*.egg
+.eggs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Python
+*.py[cod]
+*$py.class
+venv/
+env/
