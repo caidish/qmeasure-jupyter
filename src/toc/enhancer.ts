@@ -1,19 +1,25 @@
 /**
- * MutationObserver-based ToC enhancer that adds expandable info boxes to sweep headings
+ * ToC enhancer that detects sweep headings and connects them to the details panel
  */
 
 import { Widget } from '@lumino/widgets';
 import { sweepDetailsStore } from './store';
 import { ParsedSweep } from './parser';
+import { SweepDetailsController } from './detailsController';
 
 /**
- * Enhancer that decorates sweep items in the ToC with expandable info boxes
+ * Enhancer that detects sweep items in the ToC and wires up click handlers
  */
 export class SweepTocEnhancer {
   private observer: MutationObserver | null = null;
   private tocWidget: Widget | null = null;
   private notebookPath: string = '';
   private decoratedItems = new WeakSet<HTMLElement>();
+  private controller: SweepDetailsController;
+
+  constructor() {
+    this.controller = SweepDetailsController.getInstance();
+  }
 
   /**
    * Activate the enhancer
@@ -21,6 +27,9 @@ export class SweepTocEnhancer {
   activate(tocWidget: Widget, notebookPath: string): void {
     this.tocWidget = tocWidget;
     this.notebookPath = notebookPath;
+
+    // Set current notebook in controller
+    this.controller.setNotebook(notebookPath);
 
     // Attempt to locate the ToC container, retrying a few times if needed
     this.tryInitialize(0);
@@ -139,47 +148,43 @@ export class SweepTocEnhancer {
       const dataset = (textNode as HTMLElement).dataset;
       const sweepNameAttr = dataset?.sweepName;
       const sweepTypeAttr = dataset?.sweepType;
+      const cellIndexAttr = dataset?.cellIndex;
+      const iconAttr = dataset?.sweepIcon;
 
-      let icon = dataset?.sweepIcon || '';
-      let sweepName = sweepNameAttr;
-
-      if (!sweepName || !sweepTypeAttr) {
-        // Fall back to parsing text content if dataset attributes are missing
+      // Skip if not a sweep item
+      if (!sweepNameAttr || !sweepTypeAttr || !cellIndexAttr) {
+        // Fall back to text content parsing if dataset attributes are missing
         const text = textNode.textContent || '';
         const sweepMatch = text.match(/^([⏱📈📊🔄📋])\s+(\w+)/);
         if (!sweepMatch) {
           continue;
         }
-        icon = sweepMatch[1];
-        sweepName = sweepMatch[2];
-      }
-
-      if (!sweepName) {
+        // Cannot determine cell index from text - skip with warning
+        console.warn('[Sweep ToC] Item missing dataset attributes - skipping:', text);
         continue;
       }
 
-      // Try to find sweep data
-      const sweepData = this.findSweepData(sweepName);
+      const cellIndex = parseInt(cellIndexAttr, 10);
+      if (isNaN(cellIndex)) {
+        console.warn('[Sweep ToC] Invalid cellIndex attribute:', cellIndexAttr);
+        continue;
+      }
+
+      // Deterministic lookup using unique triple key
+      const sweepData = sweepDetailsStore.get(this.notebookPath, cellIndex, sweepNameAttr);
       if (!sweepData) {
-        console.debug(`[Sweep ToC] No data found for sweep: ${sweepName}`);
+        console.debug(`[Sweep ToC] No data found for sweep at ${this.notebookPath}:${cellIndex}:${sweepNameAttr}`);
         continue;
       }
 
       // Decorate this item
-      this.decorateItem(htmlItem, textNode as HTMLElement, sweepData, icon, sweepName);
+      this.decorateItem(htmlItem, textNode as HTMLElement, sweepData, iconAttr || '📊', sweepNameAttr);
       this.decoratedItems.add(htmlItem);
     }
   }
 
   /**
-   * Find sweep data by name (searches the store)
-   */
-  private findSweepData(sweepName: string): ParsedSweep | undefined {
-    return sweepDetailsStore.find(this.notebookPath, sweepName);
-  }
-
-  /**
-   * Decorate a single sweep item
+   * Decorate a single sweep item by adding click handler
    */
   private decorateItem(
     item: HTMLElement,
@@ -189,13 +194,12 @@ export class SweepTocEnhancer {
     name: string
   ): void {
     // Add sweep class to the item
-    item.classList.add('jp-TocSweep', 'jp-TocSweep-enhanced');
+    item.classList.add('jp-TocSweep', 'jp-TocSweep-clickable');
     textNode.classList.add('jp-TocSweep-heading');
 
     const dataset = (textNode as HTMLElement).dataset ?? {};
-    const sweepTypeAttr = dataset['sweepType'];
-    const sweepNameAttr = dataset['sweepName'];
     const iconAttr = dataset['sweepIcon'];
+    const sweepNameAttr = dataset['sweepName'];
 
     const resolvedIcon = iconAttr || icon;
     const resolvedName = sweepNameAttr || name;
@@ -224,174 +228,12 @@ export class SweepTocEnhancer {
       textNode.appendChild(warning);
     }
 
-    // Create toggle button
-    const toggle = document.createElement('button');
-    toggle.className = 'jp-TocSweep-toggle';
-    toggle.type = 'button';
-    toggle.textContent = '▶';
-    toggle.setAttribute('aria-expanded', 'false');
-    toggle.setAttribute('aria-label', 'Expand details');
-    toggle.title = 'Show details';
+    // Add click handler to show details in panel
+    const clickHandler = (e: MouseEvent) => {
+      // Allow default ToC navigation to happen, but also show details
+      this.controller.showSweep(sweep, this.notebookPath);
+    };
 
-    textNode.appendChild(toggle);
-
-    // Create info box
-    const infoBox = this.createInfoBox(sweep);
-    infoBox.style.display = 'none';
-    infoBox.dataset.forSweep = `${this.notebookPath}:${name}`;
-
-    // Insert the info box after the tree item so it is not constrained by the inline-flex slot
-    item.insertAdjacentElement('afterend', infoBox);
-
-    // Toggle handler
-    let expanded = false;
-    toggle.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      expanded = !expanded;
-      toggle.textContent = expanded ? '▼' : '▶';
-      toggle.setAttribute('aria-expanded', String(expanded));
-      toggle.setAttribute('aria-label', expanded ? 'Collapse details' : 'Expand details');
-      toggle.title = expanded ? 'Hide details' : 'Show details';
-      infoBox.style.display = expanded ? 'block' : 'none';
-    });
-
-    // Keyboard accessibility
-    toggle.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        e.stopPropagation();
-        toggle.click();
-      }
-    });
-  }
-
-  /**
-   * Create info box DOM element
-   */
-  private createInfoBox(sweep: ParsedSweep): HTMLElement {
-    const box = document.createElement('div');
-    box.className = 'jp-TocSweep-info';
-
-    const content = document.createElement('div');
-    content.className = 'jp-TocSweep-info-content';
-
-    // Parameters section
-    const params = this.getParameters(sweep);
-    if (params.length > 0) {
-      const section = document.createElement('div');
-      section.className = 'jp-TocSweep-info-section';
-
-      const title = document.createElement('div');
-      title.className = 'jp-TocSweep-info-title';
-      title.textContent = 'Parameters';
-      section.appendChild(title);
-
-      const grid = document.createElement('div');
-      grid.className = 'jp-TocSweep-info-grid';
-
-      for (const param of params) {
-        const label = document.createElement('div');
-        label.className = 'jp-TocSweep-info-label';
-        label.textContent = param.label;
-
-        const value = document.createElement('div');
-        value.className = 'jp-TocSweep-info-value';
-        value.textContent = param.value;
-
-        grid.appendChild(label);
-        grid.appendChild(value);
-      }
-
-      section.appendChild(grid);
-      content.appendChild(section);
-    }
-
-    // Flags section
-    const flags = this.getFlags(sweep);
-    if (flags.length > 0) {
-      const section = document.createElement('div');
-      section.className = 'jp-TocSweep-info-section';
-
-      const title = document.createElement('div');
-      title.className = 'jp-TocSweep-info-title';
-      title.textContent = 'Flags';
-      section.appendChild(title);
-
-      const flagsContainer = document.createElement('div');
-      flagsContainer.className = 'jp-TocSweep-info-flags';
-
-      for (const flag of flags) {
-        const flagEl = document.createElement('div');
-        flagEl.className = 'jp-TocSweep-info-flag';
-
-        const iconEl = document.createElement('span');
-        iconEl.className = 'jp-TocSweep-info-flag-icon';
-        iconEl.textContent = flag.icon;
-
-        const labelEl = document.createElement('span');
-        labelEl.className = 'jp-TocSweep-info-flag-label';
-        labelEl.textContent = flag.label;
-
-        flagEl.appendChild(iconEl);
-        flagEl.appendChild(labelEl);
-        flagsContainer.appendChild(flagEl);
-      }
-
-      section.appendChild(flagsContainer);
-      content.appendChild(section);
-    }
-
-    box.appendChild(content);
-    return box;
-  }
-
-  /**
-   * Extract parameters for display
-   */
-  private getParameters(sweep: ParsedSweep): Array<{ label: string; value: string }> {
-    const params: Array<{ label: string; value: string }> = [];
-    const { type, metrics } = sweep;
-
-    switch (type) {
-      case 'sweep0d':
-        if (metrics.maxTime) params.push({ label: 'Max Time', value: `${metrics.maxTime} s` });
-        if (metrics.interDelay) params.push({ label: 'Interval', value: `${metrics.interDelay} s` });
-        if (metrics.plotBin) params.push({ label: 'Plot Bin', value: metrics.plotBin });
-        if (metrics.xAxisTime) params.push({ label: 'X-Axis Time', value: metrics.xAxisTime });
-        break;
-
-      case 'sweep1d':
-        if (metrics.setParam) params.push({ label: 'Parameter', value: metrics.setParam });
-        if (metrics.start) params.push({ label: 'Start', value: metrics.start });
-        if (metrics.stop) params.push({ label: 'Stop', value: metrics.stop });
-        if (metrics.step) params.push({ label: 'Step', value: metrics.step });
-        if (metrics.interDelay) params.push({ label: 'Delay', value: `${metrics.interDelay} s` });
-        if (metrics.xAxisTime) params.push({ label: 'X-Axis Time', value: metrics.xAxisTime });
-        break;
-
-      case 'sweep2d':
-        if (metrics.innerSweep) params.push({ label: 'Inner Sweep', value: metrics.innerSweep });
-        if (metrics.outerSweep) params.push({ label: 'Outer Sweep', value: metrics.outerSweep });
-        break;
-    }
-
-    return params;
-  }
-
-  /**
-   * Extract flags for display
-   */
-  private getFlags(sweep: ParsedSweep): Array<{ label: string; icon: string }> {
-    const flags: Array<{ label: string; icon: string }> = [];
-    const { flags: sweepFlags } = sweep;
-
-    if (sweepFlags.bidirectional) flags.push({ label: 'Bidirectional', icon: '↔' });
-    if (sweepFlags.continual) flags.push({ label: 'Continual', icon: '∞' });
-    if (sweepFlags.plotData) flags.push({ label: 'Plot Data', icon: '📊' });
-    if (sweepFlags.saveData) flags.push({ label: 'Save Data', icon: '💾' });
-
-    return flags;
+    textNode.addEventListener('click', clickHandler);
   }
 }

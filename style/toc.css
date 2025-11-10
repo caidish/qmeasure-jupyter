@@ -23,6 +23,14 @@
   background-color: var(--jp-layout-color2);
 }
 
+.jp-TocSweep-clickable {
+  position: relative;
+}
+
+.jp-TocSweep-clickable:hover {
+  background-color: var(--jp-layout-color2);
+}
+
 .jp-TocSweep-icon {
   flex-shrink: 0;
   font-size: 14px;

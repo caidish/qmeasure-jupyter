@@ -5,52 +5,58 @@
 import { ParsedSweep } from './parser';
 
 /**
- * Key format: `${notebookPath}:${cellIndex}:${sweepName}`
- */
-export type SweepKey = string;
-
-/**
- * Global store of sweep details
+ * Global store of sweep details indexed by {notebook path, cell index, sweep name}
  */
 class SweepDetailsStore {
-  private details = new Map<SweepKey, ParsedSweep>();
+  // Nested map: notebookPath -> cellIndex -> sweepName -> ParsedSweep
+  private details = new Map<string, Map<number, Map<string, ParsedSweep>>>();
 
   /**
-   * Create a key for a sweep
+   * Store sweep details with unique triple key
    */
-  makeKey(notebookPath: string, cellIndex: number, sweepName: string): SweepKey {
-    return `${notebookPath}:${cellIndex}:${sweepName}`;
+  set(notebookPath: string, cellIndex: number, sweepName: string, sweep: ParsedSweep): void {
+    let notebookMap = this.details.get(notebookPath);
+    if (!notebookMap) {
+      notebookMap = new Map();
+      this.details.set(notebookPath, notebookMap);
+    }
+
+    let cellMap = notebookMap.get(cellIndex);
+    if (!cellMap) {
+      cellMap = new Map();
+      notebookMap.set(cellIndex, cellMap);
+    }
+
+    cellMap.set(sweepName, sweep);
   }
 
   /**
-   * Store sweep details
+   * Retrieve sweep details by unique triple key
    */
-  set(key: SweepKey, sweep: ParsedSweep): void {
-    this.details.set(key, sweep);
-  }
-
-  /**
-   * Retrieve sweep details
-   */
-  get(key: SweepKey): ParsedSweep | undefined {
-    return this.details.get(key);
+  get(notebookPath: string, cellIndex: number, sweepName: string): ParsedSweep | undefined {
+    return this.details.get(notebookPath)?.get(cellIndex)?.get(sweepName);
   }
 
   /**
    * Check if sweep exists
    */
-  has(key: SweepKey): boolean {
-    return this.details.has(key);
+  has(notebookPath: string, cellIndex: number, sweepName: string): boolean {
+    return this.details.get(notebookPath)?.get(cellIndex)?.has(sweepName) ?? false;
   }
 
   /**
-   * Find sweep details by notebook path and sweep name
+   * @deprecated Ambiguous lookup by name only - use get(path, cellIndex, name) instead
+   * Only kept as fallback for items without cell index metadata
    */
   find(notebookPath: string, sweepName: string): ParsedSweep | undefined {
-    const prefix = `${notebookPath}:`;
-    for (const [key, sweep] of this.details.entries()) {
-      if (key.startsWith(prefix) && sweep.name === sweepName) {
-        return sweep;
+    console.warn('[Sweep Store] Ambiguous find() called - dataset missing cellIndex?', sweepName);
+    const notebookMap = this.details.get(notebookPath);
+    if (!notebookMap) return undefined;
+
+    for (const cellMap of notebookMap.values()) {
+      const sweep = cellMap.get(sweepName);
+      if (sweep) {
+        return sweep; // Return first match (may be wrong if name is reused!)
       }
     }
     return undefined;
@@ -60,15 +66,7 @@ class SweepDetailsStore {
    * Clear all sweep details for a notebook
    */
   clearNotebook(notebookPath: string): void {
-    const keysToDelete: SweepKey[] = [];
-    for (const key of this.details.keys()) {
-      if (key.startsWith(`${notebookPath}:`)) {
-        keysToDelete.push(key);
-      }
-    }
-    for (const key of keysToDelete) {
-      this.details.delete(key);
-    }
+    this.details.delete(notebookPath);
   }
 
   /**

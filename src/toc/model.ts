@@ -155,10 +155,9 @@ export class SweepNotebookTocModel extends TableOfContentsModel<TableOfContents.
         // Compact inline text: just icon + name
         const text = `${icon} ${sweep.name}`;
 
-        // Store sweep details in global store
+        // Store sweep details in global store with unique triple key
         const notebookPath = this.widget.context.path;
-        const sweepKey = sweepDetailsStore.makeKey(notebookPath, cellIndex, sweep.name);
-        sweepDetailsStore.set(sweepKey, sweep);
+        sweepDetailsStore.set(notebookPath, cellIndex, sweep.name, sweep);
 
         headings.push({
           text,

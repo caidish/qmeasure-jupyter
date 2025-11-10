@@ -10,6 +10,7 @@ import { ITableOfContentsRegistry, TableOfContents } from '@jupyterlab/toc';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import { SweepNotebookTocFactory } from './factory';
 import { SweepTocEnhancer } from './enhancer';
+import { SweepDetailsController } from './detailsController';
 
 /**
  * The sweep ToC plugin
@@ -25,6 +26,11 @@ const tocPlugin: JupyterFrontEndPlugin<void> = {
     notebookTracker: INotebookTracker
   ) => {
     console.log('QMeasure ToC plugin activated');
+
+    // Initialize the sweep details controller
+    const detailsController = SweepDetailsController.getInstance();
+    detailsController.init(app);
+    console.log('Sweep Details controller initialized');
 
     // Create and register the sweep-aware ToC factory
     const factory = new SweepNotebookTocFactory(notebookTracker);
@@ -91,7 +97,16 @@ const tocPlugin: JupyterFrontEndPlugin<void> = {
       if (notebookPanel) {
         const notebookPath = notebookPanel.context.path;
         console.log('[Sweep ToC] Notebook changed to:', notebookPath);
+
+        // Clear details panel if notebook changed
+        detailsController.clearIfNotebook(currentNotebook || '');
+
         activateEnhancerForNotebook(notebookPath);
+      } else {
+        // No notebook open, clear panel
+        if (currentNotebook) {
+          detailsController.clearIfNotebook(currentNotebook);
+        }
       }
     });
 
