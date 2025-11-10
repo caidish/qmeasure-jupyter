@@ -180,8 +180,11 @@ export async function parseSweeps(source: string): Promise<ParsedSweep[]> {
     // Extract constants from the cell
     const constants = extractConstants(tree.rootNode, source);
 
+    // Extract dictionary variable assignments
+    const dictionaries = extractDictionaries(tree.rootNode, source);
+
     // Find all sweep assignments
-    const sweeps = extractSweepCalls(tree.rootNode, source, constants);
+    const sweeps = extractSweepCalls(tree.rootNode, source, constants, dictionaries);
 
     // Cache and return
     parseCache.set(hash, sweeps);
@@ -248,12 +251,54 @@ function extractConstants(
 }
 
 /**
+ * Extract dictionary variable assignments from AST
+ * Returns a map of variable names to their dictionary AST nodes
+ */
+function extractDictionaries(
+  node: Parser.SyntaxNode,
+  source: string
+): Map<string, Parser.SyntaxNode> {
+  const dictionaries = new Map<string, Parser.SyntaxNode>();
+
+  // Walk all assignment nodes
+  const cursor = node.walk();
+  let reachedRoot = false;
+
+  while (!reachedRoot) {
+    if (cursor.nodeType === 'assignment') {
+      const assignNode = cursor.currentNode();
+      const left = assignNode.childForFieldName('left');
+      const right = assignNode.childForFieldName('right');
+
+      if (left && right && left.type === 'identifier' && right.type === 'dictionary') {
+        const varName = source.substring(left.startIndex, left.endIndex);
+        dictionaries.set(varName, right);
+      }
+    }
+
+    if (cursor.gotoFirstChild()) {
+      continue;
+    }
+
+    while (!cursor.gotoNextSibling()) {
+      if (!cursor.gotoParent()) {
+        reachedRoot = true;
+        break;
+      }
+    }
+  }
+
+  return dictionaries;
+}
+
+/**
  * Extract sweep call expressions from AST
  */
 function extractSweepCalls(
   node: Parser.SyntaxNode,
   source: string,
-  constants: Map<string, string>
+  constants: Map<string, string>,
+  dictionaries: Map<string, Parser.SyntaxNode>
 ): ParsedSweep[] {
   const sweeps: ParsedSweep[] = [];
   const sweepTypes = ['Sweep0D', 'Sweep1D', 'Sweep2D', 'SimulSweep', 'SweepQueue'];
@@ -280,6 +325,7 @@ function extractSweepCalls(
               argsNode,
               source,
               constants,
+              dictionaries,
               sweepType as any
             );
             const { metrics, flags, complete } = structureSweepData(
@@ -325,6 +371,7 @@ function extractCallArguments(
   argsNode: Parser.SyntaxNode,
   source: string,
   constants: Map<string, string>,
+  dictionaries: Map<string, Parser.SyntaxNode>,
   sweepType: 'Sweep0D' | 'Sweep1D' | 'Sweep2D' | 'SimulSweep' | 'SweepQueue'
 ): Record<string, string> {
   const params: Record<string, string> = {};
@@ -408,11 +455,23 @@ function extractCallArguments(
         if (positionalNodes[0]) {
           const dictNode = positionalNodes[0];
           if (dictNode.type === 'dictionary') {
+            // Inline dictionary literal
             const simulParams = extractSimulSweepDict(dictNode, source, constants);
-            // Store as JSON string for now (will be parsed in structureSweepData)
             params.simul_params = JSON.stringify(simulParams);
+          } else if (dictNode.type === 'identifier') {
+            // Variable reference - look it up in dictionaries map
+            const varName = source.substring(dictNode.startIndex, dictNode.endIndex);
+            const dictDefNode = dictionaries.get(varName);
+            if (dictDefNode) {
+              // Found the dictionary definition - parse it
+              const simulParams = extractSimulSweepDict(dictDefNode, source, constants);
+              params.simul_params = JSON.stringify(simulParams);
+            } else {
+              // Dictionary not found in current cell
+              params.parameter_dict = varName;
+            }
           } else {
-            // Might be a variable reference to a dict
+            // Some other expression
             params.parameter_dict = positionalArgs[0];
           }
         }

@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { FormInput } from './FormInput';
+import { CustomParams, CustomParamEntry } from './CustomParams';
 import { FormField, Sweep0DParameters } from '../types';
 
 interface Sweep0DFormProps {
@@ -88,6 +89,7 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
     return defaults;
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customParams, setCustomParams] = useState<CustomParamEntry[]>([]);
 
   const handleChange = (name: string, value: any) => {
     setValues(prev => ({ ...prev, [name]: value }));
@@ -142,7 +144,8 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
       suppress_output: values.suppress_output,
       follow_params: values.follow_params
         ? values.follow_params.split('\n').map((p: string) => p.trim()).filter((p: string) => p)
-        : []
+        : [],
+      custom_params: customParams.filter(p => p.key.trim() !== '')
     };
 
     onGenerate(params);
@@ -164,6 +167,8 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
           error={errors[field.name]}
         />
       ))}
+
+      <CustomParams value={customParams} onChange={setCustomParams} />
 
       <button
         className="qmeasure-button"

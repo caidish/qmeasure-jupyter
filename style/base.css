@@ -223,3 +223,120 @@
   font-size: 13px;
   font-weight: 600;
 }
+
+/* SimulSweep parameter entries */
+.qmeasure-param-entry {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  background-color: var(--jp-layout-color1);
+}
+
+.qmeasure-param-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--jp-ui-font-color1);
+}
+
+.qmeasure-param-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.qmeasure-button-small {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 3px;
+  background-color: var(--jp-brand-color1);
+  color: var(--jp-ui-inverse-font-color1);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.qmeasure-button-small:hover {
+  background-color: var(--jp-brand-color0);
+}
+
+.qmeasure-button-danger {
+  background-color: var(--jp-error-color1);
+}
+
+.qmeasure-button-danger:hover {
+  background-color: var(--jp-error-color0);
+}
+
+/* Custom Parameters */
+.qmeasure-custom-params {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 4px;
+  background-color: var(--jp-layout-color1);
+}
+
+.qmeasure-custom-params-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.qmeasure-custom-params-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.qmeasure-custom-params-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--jp-ui-font-color2);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.qmeasure-custom-params-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qmeasure-custom-param-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.qmeasure-custom-param-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.qmeasure-custom-param-inputs .qmeasure-form-group {
+  flex: 1;
+  margin: 0;
+}
+
+.qmeasure-custom-param-separator {
+  font-weight: 600;
+  color: var(--jp-ui-font-color1);
+  padding-top: 6px;
+}
+
+.qmeasure-input-warning {
+  border-color: var(--jp-warn-color1) !important;
+}
+
+.qmeasure-form-warning {
+  color: var(--jp-warn-color1);
+  font-size: 11px;
+  margin-top: 4px;
+}

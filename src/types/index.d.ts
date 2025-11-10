@@ -10,6 +10,14 @@ export type SweepType = 'sweep0d' | 'sweep1d' | 'sweep2d' | 'simulsweep';
 /**
  * Base parameters common to all sweep types
  */
+/**
+ * Custom parameter entry
+ */
+export interface CustomParamEntry {
+  key: string;
+  value: string;
+}
+
 export interface BaseSweepParameters {
   sweep_name?: string;
   inter_delay: number;
@@ -19,6 +27,7 @@ export interface BaseSweepParameters {
   complete_func?: string;
   suppress_output: boolean;
   follow_params: string[];
+  custom_params?: CustomParamEntry[];
 }
 
 /**
@@ -63,9 +72,10 @@ export interface Sweep2DParameters extends BaseSweepParameters {
 }
 
 /**
- * SimulSweep parameter configuration
+ * SimulSweep parameter entry
  */
-export interface SimulSweepParamConfig {
+export interface SimulSweepParamEntry {
+  paramPath: string;
   start: number;
   stop: number;
   step: number;
@@ -75,7 +85,7 @@ export interface SimulSweepParamConfig {
  * SimulSweep specific parameters
  */
 export interface SimulSweepParameters extends BaseSweepParameters {
-  params: Record<string, SimulSweepParamConfig>;
+  params: SimulSweepParamEntry[];
   n_steps?: number;
   err: number;
   bidirectional: boolean;
@@ -90,6 +100,21 @@ export type SweepParameters =
   | Sweep1DParameters
   | Sweep2DParameters
   | SimulSweepParameters;
+
+/**
+ * Sweep code segments for deferred start
+ */
+export interface SweepCode {
+  /**
+   * Sweep setup code (construction, follow params)
+   */
+  setup: string;
+
+  /**
+   * Sweep start code (ensure_qt() and s.start())
+   */
+  start: string;
+}
 
 /**
  * Form field types

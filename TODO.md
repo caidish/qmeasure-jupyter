@@ -13,7 +13,7 @@
 - [x] Create forms for Sweep0D, Sweep1D, Sweep2D
 - [x] Implement text inputs for all parameters
 - [x] Add client-side validation (numbers, required fields, non-blocking)
-- [ ] Add "Custom Parameters" key-value component (deferred to future)
+- [x] Add "Custom Parameters" key-value component
 
 ## ✅ Week 3: Code Generation & Integration (COMPLETED)
 - [x] Implement static code templates
@@ -23,6 +23,9 @@
 - [x] Non-blocking validation - generates code even with missing required fields
 
 ## 📅 Week 4: Polish & Release
+- [x] Custom Parameters component (key-value pairs)
+- [x] Integrate custom params into all sweep forms (Sweep0D, Sweep1D, Sweep2D, SimulSweep)
+- [x] Update all code generators to emit custom_param() calls
 - [ ] Add tooltips and help text
 - [ ] Implement form persistence (localStorage)
 - [ ] Write basic documentation
@@ -33,14 +36,25 @@
 
 ### What's Working
 - ✅ Complete JupyterLab extension with sidebar panel
-- ✅ Sweep0D, Sweep1D, Sweep2D forms with all MeasureIt parameters
+- ✅ Sweep0D, Sweep1D, Sweep2D, SimulSweep forms with all MeasureIt parameters
 - ✅ Code generation with _required placeholders for missing fields
 - ✅ Direct insertion into Jupyter notebook cells
 - ✅ Non-blocking validation (shows errors but still generates code)
 - ✅ Proper Python boolean/literal conversion (True/False)
+- ✅ SimulSweep form with exactly 2 parameters (required)
+- ✅ Deferred start infrastructure for database integration
+- ✅ Right sidebar panel for sweep details display
+- ✅ Tree-sitter Python parser for sweep detection in notebooks
+- ✅ Table of Contents with sweep entries (🔄 icon for SimulSweep)
+- ✅ Positional and keyword argument detection
+- ✅ Sweep2D list parameter support
+- ✅ Dictionary variable tracking for SimulSweep parameter extraction
+- ✅ SimulSweep details panel with parameter table
+- ✅ Custom Parameters component with key-value pairs (all forms integrated)
+- ✅ Code generators emit sweep.custom_param() calls for all sweep types
 
 ### Known Issues
-- SimulSweep form is placeholder only (not yet implemented)
+- None currently blocking functionality
 
 ### Next Steps
 1. Test the extension in JupyterLab (hard refresh: Cmd+Shift+R)

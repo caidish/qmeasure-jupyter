@@ -8,6 +8,7 @@ import { FormField } from '../types';
 
 interface DatabaseFormProps {
   sweepName: string;
+  startCode?: string | null;
   onGenerate: (code: string) => void;
 }
 
@@ -45,7 +46,7 @@ const DATABASE_FIELDS: FormField[] = [
   }
 ];
 
-export const DatabaseForm: React.FC<DatabaseFormProps> = ({ sweepName, onGenerate }) => {
+export const DatabaseForm: React.FC<DatabaseFormProps> = ({ sweepName, startCode, onGenerate }) => {
   // Initialize form with default values
   const [values, setValues] = useState<Record<string, any>>(() => {
     const defaults: Record<string, any> = {};
@@ -94,7 +95,7 @@ export const DatabaseForm: React.FC<DatabaseFormProps> = ({ sweepName, onGenerat
     const expName = values.exp_name || '_required';
     const sampleName = values.sample_name || '_required';
 
-    const code = `# Database initialization
+    let code = `# Database initialization
 try:
     # Make sure database_name and the path are set to the correct values!
     database_name = "${databaseName}"
@@ -103,6 +104,11 @@ try:
     init_database(database_name, exp_name, sample_name, ${sweepName})
 except:
     print("Error opening database")`;
+
+    // Append deferred start code if available
+    if (startCode) {
+      code += `\n\n${startCode}`;
+    }
 
     onGenerate(code);
   };

@@ -5,12 +5,13 @@
 import React, { useState } from 'react';
 import { ReactWidget } from '@jupyterlab/ui-components';
 import { INotebookTracker } from '@jupyterlab/notebook';
-import { SweepType, Sweep0DParameters, Sweep1DParameters, Sweep2DParameters } from '../types';
+import { SweepType, Sweep0DParameters, Sweep1DParameters, Sweep2DParameters, SimulSweepParameters } from '../types';
 import { Sweep0DForm } from './Sweep0DForm';
 import { Sweep1DForm } from './Sweep1DForm';
 import { Sweep2DForm } from './Sweep2DForm';
+import { SimulSweepForm } from './SimulSweepForm';
 import { DatabaseForm } from './DatabaseForm';
-import { generateSweep0D, generateSweep1D, generateSweep2D } from '../services/CodeGenerator';
+import { generateSweep0D, generateSweep1D, generateSweep2D, generateSimulSweep, renderSweepCode } from '../services/CodeGenerator';
 
 type TabType = SweepType | 'database';
 
@@ -29,6 +30,7 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
 }) => {
   const [selectedTab, setSelectedTab] = useState<TabType>('sweep1d');
   const [lastSweepName, setLastSweepName] = useState<string>('s_1D');
+  const [pendingStartCode, setPendingStartCode] = useState<string | null>(null);
 
   const insertCode = (code: string) => {
     const notebook = notebookTracker.currentWidget?.content;
@@ -63,33 +65,44 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
   };
 
   const handleGenerate = (params: any) => {
-    let code = '';
+    let sweepCode;
     let sweepName = 's_1D';
 
     switch (selectedTab as SweepType) {
       case 'sweep0d':
-        code = generateSweep0D(params as Sweep0DParameters);
+        sweepCode = generateSweep0D(params as Sweep0DParameters);
         sweepName = (params as Sweep0DParameters).sweep_name || 's_0D';
         break;
       case 'sweep1d':
-        code = generateSweep1D(params as Sweep1DParameters);
+        sweepCode = generateSweep1D(params as Sweep1DParameters);
         sweepName = (params as Sweep1DParameters).sweep_name || 's_1D';
         break;
       case 'sweep2d':
-        code = generateSweep2D(params as Sweep2DParameters);
+        sweepCode = generateSweep2D(params as Sweep2DParameters);
         sweepName = (params as Sweep2DParameters).sweep_name || 's_2D';
+        break;
+      case 'simulsweep':
+        sweepCode = generateSimulSweep(params as SimulSweepParameters);
+        sweepName = (params as SimulSweepParameters).sweep_name || 's_simul';
         break;
       default:
         alert('This sweep type is not yet implemented');
         return;
     }
 
+    // If save_data is true, defer start code until after database setup
+    const includeStart = !params.save_data;
+    const code = renderSweepCode(sweepCode, includeStart);
+
     setLastSweepName(sweepName);
     insertCode(code);
 
-    // Auto-switch to database tab if save_data is true
+    // Store start code for database form if save_data is enabled
     if (params.save_data) {
+      setPendingStartCode(sweepCode.start);
       setSelectedTab('database');
+    } else {
+      setPendingStartCode(null);
     }
   };
 
@@ -105,14 +118,10 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
         return <Sweep1DForm onGenerate={handleGenerate} />;
       case 'sweep2d':
         return <Sweep2DForm onGenerate={handleGenerate} />;
-      case 'database':
-        return <DatabaseForm sweepName={lastSweepName} onGenerate={handleDatabaseGenerate} />;
       case 'simulsweep':
-        return (
-          <div className="qmeasure-info">
-            SimulSweep form coming soon...
-          </div>
-        );
+        return <SimulSweepForm onGenerate={handleGenerate} />;
+      case 'database':
+        return <DatabaseForm sweepName={lastSweepName} startCode={pendingStartCode} onGenerate={handleDatabaseGenerate} />;
       default:
         return null;
     }
