@@ -6,27 +6,36 @@ A JupyterLab extension providing a beginner-friendly GUI for the [MeasureIt](htt
 
 ## Features
 
-### Code Generation
+### Sweep Creation
 
 - 📊 **Complete Sweep Support** - Forms for Sweep0D, Sweep1D, Sweep2D, and SimulSweep
+- ⚡ **Fast Sweeps** - Quick templates for Sweepto and GateLeakage measurements
 - 📝 **Smart Code Templates** - Generates production-ready Python code with proper syntax
-- ⚡ **One-Click Insertion** - Insert generated code directly into active notebook cells
 - 🔧 **Flexible Validation** - Client-side validation that won't block code generation
 - 🎯 **Custom Parameters** - Add arbitrary keyword arguments to sweep constructors
+
+### Queue Manager
+
+- 📋 **Build Sweep Queues** - Add sweeps to execution queues with database integration
+- ✏️ **Edit Queue Entries** - Modify queued sweeps with form auto-fill
+- 🔄 **Reorder & Organize** - Drag/reorder queue entries, duplicate sweeps
+- 💾 **Database Integration** - Supports both inline and variable DatabaseEntry references
+- 🚀 **Export Queue Scripts** - Generate complete, runnable queue code
+
+### Advanced Analytics
+
+- 🔍 **Cross-Cell Tracking** - Detects sweeps and queue entries across all notebook cells
+- 📊 **Queue Position Display** - Shows "Position X of Y" for queued sweeps
+- 🔁 **Loop Context Detection** - Identifies sweeps defined in FOR/WHILE loops
+- ⚙️ **Function Context** - Tracks sweeps inside function definitions
+- 🌳 **Tree-Sitter Parser** - Robust AST parsing for accurate code analysis
 
 ### User Experience
 
 - 💾 **Form Persistence** - Automatically saves form inputs to localStorage
 - 🔄 **Reset to Defaults** - Clear saved values with one click
 - ❓ **Inline Help** - Hover over (?) icons to see parameter descriptions
-- 📋 **Copy to Clipboard** - Alternative insertion method when cell insertion fails
-
-### Notebook Integration
-
-- 📑 **Table of Contents** - Automatic detection and listing of all sweeps in your notebook
-- 🔍 **Sweep Inspector** - Right sidebar panel showing detailed sweep parameters
-- 🌳 **Tree-Sitter Parser** - Robust Python parsing for accurate sweep detection
-- 🏷️ **Type Icons** - Visual indicators for different sweep types (📍📊🗺️🔄)
+- 🎨 **Visual Feedback** - Badges for queued sweeps, fast sweeps, loop/function context
 
 ## Requirements
 

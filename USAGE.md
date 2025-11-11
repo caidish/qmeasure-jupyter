@@ -8,11 +8,22 @@
   - [Sweep1D - 1D Parameter Sweeps](#sweep1d---1d-parameter-sweeps)
   - [Sweep2D - 2D Parameter Sweeps](#sweep2d---2d-parameter-sweeps)
   - [SimulSweep - Simultaneous Sweeps](#simulsweep---simultaneous-sweeps)
+- [Fast Sweeps](#fast-sweeps)
+  - [Sweepto - Quick Parameter Changes](#sweepto---quick-parameter-changes)
+  - [GateLeakage - Gate Limit Testing](#gateleakage---gate-limit-testing)
+- [Queue Manager](#queue-manager)
+  - [Building Sweep Queues](#building-sweep-queues)
+  - [Editing Queue Entries](#editing-queue-entries)
+  - [Database Integration](#database-integration)
+  - [Exporting Queue Code](#exporting-queue-code)
 - [Advanced Features](#advanced-features)
   - [Follow Parameters](#follow-parameters)
   - [Custom Parameters](#custom-parameters)
   - [Form Persistence](#form-persistence)
-- [Table of Contents Panel](#table-of-contents-panel)
+- [Table of Contents & Sweep Details](#table-of-contents--sweep-details)
+  - [Sweep Details Panel](#sweep-details-panel)
+  - [Queue Analytics](#queue-analytics)
+  - [Context Detection](#context-detection)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -247,6 +258,303 @@ dual_gate.start()
 
 ---
 
+## Fast Sweeps
+
+Fast Sweeps provide quick templates for common measurement workflows that don't require full parameter configuration.
+
+### Sweepto - Quick Parameter Changes
+
+**Use case**: Quickly sweep a parameter from its current value to a target setpoint.
+
+#### When to Use
+- Moving a gate voltage to a new operating point
+- Quickly changing temperature or magnetic field
+- Resetting parameters between measurements
+
+#### Required Parameters
+- **Sweep Name**: Variable name (default: `s_to`)
+- **Parameter**: QCoDeS parameter to sweep (e.g., `gate.voltage`)
+- **Setpoint**: Target value
+- **Step**: Step size for the sweep
+
+#### Features
+- **Auto-detects current value**: Starts from `param.get()` automatically
+- **No database by default**: `save_data=False` for quick operations
+- **Live plotting enabled**: `plot_data=True` to monitor progress
+
+#### Example
+```python
+# Fill in form:
+Parameter: gate.voltage
+Setpoint: 0.5
+Step: 0.01
+
+# Generated code:
+# Get current value for reference
+set_param = station.gate.voltage
+current_value = set_param.get()
+
+s_to = Sweep1D(
+    set_param=set_param,
+    start=current_value,
+    stop=0.5,
+    step=0.01,
+    save_data=False,
+    plot_data=True,
+    plot_bin=1
+)
+
+# Start sweep
+ensure_qt()
+s_to.start()
+```
+
+---
+
+### GateLeakage - Gate Limit Testing
+
+**Use case**: Test gate leakage by slowly ramping voltage while monitoring current.
+
+#### When to Use
+- Finding safe voltage operating ranges
+- Characterizing gate breakdown
+- Device health checks
+
+#### Required Parameters
+- **Sweep Name**: Variable name (default: `s_gate`)
+- **Set Parameter**: Gate voltage parameter
+- **Track Parameter**: Current measurement parameter
+- **Max Current**: Maximum allowed current (A)
+- **Limit**: Voltage limit
+- **Step**: Voltage step size
+
+#### Optional Parameters
+- **Inter Delay**: Time between measurements (default: 0.01s)
+- **Save Data**: Save to database (default: False)
+- **Plot Data**: Live plotting (default: True)
+
+#### Example
+```python
+# Fill in form:
+Set Parameter: gate.voltage
+Track Parameter: current_amp.current
+Max Current: 1e-9
+Limit: 5.0
+Step: 0.01
+
+# Generated code:
+set_param = station.gate.voltage
+track_param = station.current_amp.current
+
+s_gate = GateLeakage(
+    set_param=set_param,
+    track_param=track_param,
+    max_I=1e-9,
+    limit=5.0,
+    step=0.01,
+    inter_delay=0.01,
+    save_data=False,
+    plot_data=True
+)
+
+# Start sweep
+ensure_qt()
+s_gate.start()
+```
+
+**Safety**: The sweep will automatically stop if current exceeds `max_I` to protect your device.
+
+---
+
+## Queue Manager
+
+The Queue Manager allows you to build, organize, and execute sequences of sweeps with database integration.
+
+### Opening the Queue Manager
+
+1. Look for the **"Queue"** panel in the right sidebar
+2. If not visible, check View → Show Right Sidebar
+3. The Queue Manager icon should appear alongside other right-panel widgets
+
+### Building Sweep Queues
+
+#### Basic Workflow
+
+```
+1. Create a sweep using any form (Sweep0D, Sweep1D, etc.)
+2. Click "Add to Queue" instead of "Generate Code"
+3. Repeat for additional sweeps
+4. Configure database settings (optional)
+5. Click "Insert Queue Code" to generate the queue script
+```
+
+#### Multi-Cell Queue Building
+
+Queues can be built across multiple notebook cells:
+
+**Cell 1: Initialize queue and database**
+```python
+from measureit.tools.sweep_queue import SweepQueue, DatabaseEntry
+sq = SweepQueue()
+
+# Define database configuration
+db_entry = DatabaseEntry("measurement.db", "cooldown_test", "device_A")
+```
+
+**Cell 2: Define and queue first sweep**
+```python
+s_1D = Sweep1D(
+    set_param=station.gate.voltage,
+    start=-1,
+    stop=1,
+    step=0.01
+)
+sq += (db_entry, s_1D)  # Position 1
+```
+
+**Cell 3: Add more sweeps (even in loops!)**
+```python
+for temp in [10, 50, 100, 300]:
+    s_temp = Sweep1D(
+        set_param=station.heater.power,
+        start=0,
+        stop=temp,
+        step=1
+    )
+    sq += (db_entry, s_temp)  # Positions 2-5
+```
+
+**Cell 4: Run the queue**
+```python
+sq.run()
+```
+
+The Table of Contents panel will correctly show all queue positions and database configurations across all cells!
+
+---
+
+### Editing Queue Entries
+
+#### How to Edit
+
+1. **Locate sweep** in the Queue Manager panel (right sidebar)
+2. **Click the edit icon** (✏️) next to the sweep entry
+3. **Form auto-fills** with the sweep's current parameters
+4. **Modify** any values in the form
+5. **Click "Add to Queue"** to update (replaces the original)
+
+#### Visual Indicators
+
+When editing, the Sweep Manager shows:
+- **Yellow banner** at top: "Editing: [sweep_name]"
+- **Cancel button** to discard changes
+- All form fields pre-populated with current values
+
+#### What You Can Edit
+- All sweep parameters (start, stop, step, etc.)
+- Follow parameters
+- Custom parameters
+- Database configuration
+- Sweep name
+
+---
+
+### Database Integration
+
+#### Setting Up Database for a Sweep
+
+**Option 1: During Sweep Creation**
+1. Enable "Save to Database" checkbox in any sweep form
+2. Click "Add to Queue"
+3. Form automatically switches to **Database tab**
+4. Fill in database details
+5. Click "Add to Queue" again to finalize
+
+**Option 2: Separate Database Configuration**
+1. Create sweeps with `save_data=False`
+2. Add to queue
+3. Switch to **Database tab** manually
+4. Configure database
+5. Click "Add to Queue" to update the last queued sweep
+
+#### Database Form Fields
+
+- **Sweep Name**: Name of the sweep object (auto-filled)
+- **Database Name**: SQLite database file (e.g., `measurement.db`)
+- **Experiment Name**: Experiment identifier
+- **Sample Name**: Sample identifier
+- **Start Code**: Whether to include `.start()` call (default: Yes)
+
+#### Database Entry Patterns
+
+**Inline DatabaseEntry**:
+```python
+sq += (DatabaseEntry("db.db", "exp1", "sample_A"), s_1D)
+```
+
+**Variable Reference** (reusable):
+```python
+db_entry = DatabaseEntry("db.db", "exp1", "sample_A")
+sq += (db_entry, s_1D)
+sq += (db_entry, s_2D)  # Same database config
+```
+
+Both patterns are detected and displayed in the Sweep Details panel!
+
+---
+
+### Exporting Queue Code
+
+#### Generate Queue Script
+
+1. **Build your queue** using "Add to Queue" buttons
+2. **Open Queue Manager** (right sidebar)
+3. **Click "Insert Queue Code"** at bottom of panel
+4. **Complete script inserted** into active notebook cell
+
+#### What Gets Generated
+
+```python
+# Generated Sweep Queue
+from measureit.tools.sweep_queue import SweepQueue, DatabaseEntry
+from measureit import Sweep1D, Sweep2D
+from measureit.tools import ensure_qt
+import qcodes as qc
+
+station = qc.Station.default
+ensure_qt()
+
+# Queue initialization
+sq = SweepQueue()
+
+# Entry 1: Sweep1D "gate_sweep"
+set_param = station.gate.voltage
+s_1D = Sweep1D(
+    set_param=set_param,
+    start=-1,
+    stop=1,
+    step=0.01,
+    save_data=True
+)
+sq += (DatabaseEntry("measurement.db", "test", "device"), s_1D)
+
+# Entry 2: Sweep2D "gate_field_map"
+# ... (setup code)
+sq += (DatabaseEntry("measurement.db", "test", "device"), s_2D)
+
+# Run queue
+sq.run()
+```
+
+#### Queue Operations
+
+- **Reorder**: Use ↑↓ buttons to change sweep order
+- **Duplicate**: Clone a sweep with all settings
+- **Delete**: Remove from queue (with confirmation)
+- **Clear All**: Empty the entire queue
+
+---
+
 ## Advanced Features
 
 ### Follow Parameters
@@ -351,31 +659,173 @@ To clear saved values and return to defaults:
 
 ---
 
-## Table of Contents Panel
+## Table of Contents & Sweep Details
 
-The bottom section of the Sweep Manager shows all sweeps detected in your notebook.
+The extension provides powerful code analysis to detect and visualize all sweeps in your notebook.
 
-### Features
-- **Automatic detection** - scans notebook cells for sweep objects
-- **Real-time updates** - updates as you run cells
-- **Sweep icons** - Different icons for each sweep type:
-  - `📍` Sweep0D
-  - `📊` Sweep1D
-  - `🗺️` Sweep2D
-  - `🔄` SimulSweep
-- **Click to view details** - Click any sweep to see its parameters in the right sidebar
+### Table of Contents Panel
 
-### What Information is Shown?
-- Sweep name and type
-- Parameters being swept
-- Start/stop/step values
-- Follow parameters
-- Custom parameters (if any)
+Located in the **left sidebar** under the Sweep Manager, the ToC automatically detects all sweep objects.
 
-### Limitations
-- Only detects sweeps after the cell has been executed
-- Requires valid Python syntax (won't detect syntax errors)
-- Sweeps defined in imported modules may not be detected
+#### Features
+- **Real-time detection** - scans cells as you execute them
+- **Cross-cell tracking** - finds sweeps and queue entries across all cells
+- **Smart parsing** - uses Tree-sitter AST parser for accurate detection
+- **Sweep icons** - Visual indicators for each type:
+  - ⏱ Sweep0D
+  - 📈 Sweep1D
+  - 📊 Sweep2D
+  - 🔄 SimulSweep
+  - 📋 SweepQueue
+  - ⚡ Sweepto (fast sweep)
+  - 🔌 GateLeakage
+
+#### Click to View Details
+Click any sweep in the ToC to open detailed information in the right sidebar panel.
+
+---
+
+### Sweep Details Panel
+
+The **right sidebar** shows comprehensive information about the selected sweep.
+
+#### Header Section
+- **Sweep type and icon**
+- **Sweep name** (variable name)
+- **⚠ Warning indicator** if parameters are missing
+
+#### Queue Information
+When a sweep is part of a queue:
+```
+📋 Queued (position 3 of 5)
+```
+Shows position and total queue length, even across multiple cells!
+
+#### Fast Sweep Badge
+For Sweepto and GateLeakage sweeps:
+```
+⚡ Fast Sweep - Fast sweep to setpoint
+```
+
+#### Parameters Section
+Displays all sweep parameters:
+- **Sweep0D**: Max time, interval, plot bin
+- **Sweep1D**: Set param, start, stop, step, delay
+- **Sweep2D**: Inner/outer params with full range info
+- **SimulSweep**: Parameter count, individual param details
+- **Sweepto**: Parameter, start (current), setpoint, step
+- **GateLeakage**: Set param, track param, max current, limit, step
+
+#### Flags Section
+Visual badges for sweep options:
+- ↔ Bidirectional
+- ∞ Continual
+- 📊 Plot Data
+- 💾 Save Data
+
+#### Database Configuration
+When database is configured:
+```
+Database: measurement.db
+Experiment: cooldown_test
+Sample: device_A
+```
+Works with both inline `DatabaseEntry(...)` and variable references!
+
+---
+
+### Queue Analytics
+
+The extension provides advanced analytics by analyzing your code structure.
+
+#### Loop Context Detection
+When a sweep is defined inside a loop:
+```
+🔁 Loop Context
+Type: FOR loop
+Variable: temp
+Iterating over: [10, 50, 100, 300]
+```
+
+or for WHILE loops:
+```
+🔁 Loop Context
+Type: WHILE loop
+Condition: pressure < 1e-6
+```
+
+**Use case**: Understand which sweeps are generated programmatically vs. manually.
+
+#### Function Context Detection
+When a sweep is defined inside a function:
+```
+⚙️ Function Context
+Function: run_experiment()
+```
+
+or for async functions:
+```
+⚙️ Function Context
+Function: async run_measurement()
+```
+
+**Use case**: Track which measurement workflows generate specific sweeps.
+
+---
+
+### Context Detection
+
+The extension uses AST (Abstract Syntax Tree) parsing to understand code structure:
+
+#### What Gets Detected
+
+**Queue Relationships**:
+- Sweeps added to queues via `sq += ...`
+- Position in queue (1st, 2nd, 3rd, etc.)
+- Total sweeps in each queue
+- Database configurations (inline or variable reference)
+
+**Code Structure**:
+- Loop nesting (FOR/WHILE loops)
+- Function definitions (regular and async)
+- Iteration variables and conditions
+
+**Sweep Patterns**:
+- Fast sweeps (Sweepto: `start=current_value`)
+- Gate leakage tests (GateLeakage constructor)
+- Custom sweep subclasses
+
+#### Cross-Cell Linking
+
+The parser performs **two-pass analysis**:
+
+1. **First pass**: Scan all cells to find queue entries
+2. **Second pass**: Parse sweeps and link to queue entries
+
+This means:
+```python
+# Cell 1: Define sweep
+s_1D = Sweep1D(...)
+
+# Cell 2: Add to queue
+sq += (db_entry, s_1D)
+
+# Cell 3: Add more
+for i in range(5):
+    sq += (db_entry, some_sweep)
+```
+
+The ToC correctly shows:
+- `s_1D`: Position 1 of 6
+- Loop-generated sweeps: Positions 2-6 of 6
+- All with database info attached ✅
+
+#### Limitations
+
+- Only analyzes executed cells
+- Requires valid Python syntax
+- Sweeps in imported modules not detected
+- Dynamic variable names may not resolve
 
 ---
 

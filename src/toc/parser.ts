@@ -18,6 +18,11 @@ export interface SweepMetrics {
   stop?: string;
   step?: string;
 
+  // GateLeakage specific
+  trackParam?: string;
+  maxCurrent?: string; // max_I
+  limit?: string;
+
   // Sweep0D specific
   maxTime?: string;
   interDelay?: string;
@@ -57,13 +62,49 @@ export interface SweepFlags {
   continual?: boolean;
   plotData?: boolean;
   saveData?: boolean;
+  isFastSweep?: boolean; // True for Sweepto/GateLeakage patterns
+}
+
+/**
+ * Queue-related metadata
+ */
+export interface QueueMetadata {
+  queueVariable?: string; // e.g., "sq"
+  position?: number; // Position in queue (0-indexed)
+  totalInQueue?: number; // Total sweeps in this queue
+  database?: {
+    name: string;
+    experiment: string;
+    sample: string;
+  };
+}
+
+/**
+ * Loop context metadata
+ */
+export interface LoopContext {
+  type: 'for' | 'while';
+  variable?: string; // For loop: iteration variable (e.g., "i", "voltage")
+  iterable?: string; // For loop: what's being iterated (e.g., "range(10)", "voltages")
+  condition?: string; // While loop: loop condition
+}
+
+/**
+ * Function context metadata
+ */
+export interface FunctionContext {
+  name: string; // Function name
+  isAsync?: boolean; // Is it an async function?
 }
 
 export interface ParsedSweep {
-  type: 'sweep0d' | 'sweep1d' | 'sweep2d' | 'simulsweep' | 'sweepqueue';
+  type: 'sweep0d' | 'sweep1d' | 'sweep2d' | 'simulsweep' | 'sweepqueue' | 'sweepto' | 'gateleakage';
   name: string;
   metrics: SweepMetrics;
   flags: SweepFlags;
+  queue?: QueueMetadata; // Present if sweep is part of a queue
+  loop?: LoopContext; // Present if sweep is inside a loop
+  function?: FunctionContext; // Present if sweep is inside a function
   notes?: string;
   complete: boolean; // Whether all required params were resolved
   diagnostics?: string[];
@@ -162,12 +203,20 @@ const parseCache = new Map<string, ParsedSweep[]>();
 
 /**
  * Parse sweeps from a code cell source
+ * @param source - Python source code
+ * @param notebookQueueEntries - Optional notebook-level queue entries for cross-cell linking
  */
-export async function parseSweeps(source: string): Promise<ParsedSweep[]> {
-  // Check cache first
-  const hash = hashString(source);
-  if (parseCache.has(hash)) {
-    return parseCache.get(hash)!;
+export async function parseSweeps(
+  source: string,
+  notebookQueueEntries?: QueueEntry[]
+): Promise<ParsedSweep[]> {
+  // Check cache first (cache key includes queue entries for correctness)
+  const cacheKey = notebookQueueEntries
+    ? `${hashString(source)}_${hashString(JSON.stringify(notebookQueueEntries))}`
+    : hashString(source);
+
+  if (parseCache.has(cacheKey)) {
+    return parseCache.get(cacheKey)!;
   }
 
   try {
@@ -186,12 +235,44 @@ export async function parseSweeps(source: string): Promise<ParsedSweep[]> {
     // Find all sweep assignments
     const sweeps = extractSweepCalls(tree.rootNode, source, constants, dictionaries);
 
+    // Use notebook-level queue entries if provided, otherwise extract from this cell
+    const queueEntries = notebookQueueEntries || extractQueueEntries(tree.rootNode, source, dictionaries);
+
+    // Link sweeps to queue entries
+    linkSweepsToQueue(sweeps, queueEntries);
+
+    // Detect fast sweep patterns
+    detectFastSweeps(sweeps);
+
     // Cache and return
-    parseCache.set(hash, sweeps);
+    parseCache.set(cacheKey, sweeps);
     return sweeps;
   } catch (err) {
     if (err instanceof ParserInitError) {
       // Parser not available - return empty array
+      return [];
+    }
+    throw err;
+  }
+}
+
+/**
+ * Extract ONLY queue entries from source (lightweight scan for notebook-level aggregation)
+ * This is called before sweep parsing to build a complete queue map across all cells
+ */
+export async function extractQueueEntriesFromSource(source: string): Promise<QueueEntry[]> {
+  try {
+    const manager = ParserManager.getInstance();
+    const parser = await manager.getParser();
+
+    const tree = parser.parse(source);
+
+    // Extract dictionaries for DatabaseEntry variable resolution
+    const dictionaries = extractDictionaries(tree.rootNode, source);
+
+    return extractQueueEntries(tree.rootNode, source, dictionaries);
+  } catch (err) {
+    if (err instanceof ParserInitError) {
       return [];
     }
     throw err;
@@ -292,6 +373,55 @@ function extractDictionaries(
 }
 
 /**
+ * Extract DatabaseEntry variable assignments from AST
+ * Returns a map of variable names to their database configuration
+ */
+function extractDatabaseEntries(
+  node: Parser.SyntaxNode,
+  source: string
+): Map<string, { name: string; experiment: string; sample: string }> {
+  const dbEntries = new Map<string, { name: string; experiment: string; sample: string }>();
+
+  const cursor = node.walk();
+  let reachedRoot = false;
+
+  while (!reachedRoot) {
+    if (cursor.nodeType === 'assignment') {
+      const assignNode = cursor.currentNode();
+      const left = assignNode.childForFieldName('left');
+      const right = assignNode.childForFieldName('right');
+
+      if (left && right && left.type === 'identifier' && right.type === 'call') {
+        const funcNode = right.childForFieldName('function');
+        if (funcNode && funcNode.text === 'DatabaseEntry') {
+          const varName = source.substring(left.startIndex, left.endIndex);
+          const argsNode = right.childForFieldName('arguments');
+          if (argsNode) {
+            const database = parseDatabaseEntry(argsNode, source);
+            if (database) {
+              dbEntries.set(varName, database);
+            }
+          }
+        }
+      }
+    }
+
+    if (cursor.gotoFirstChild()) {
+      continue;
+    }
+
+    while (!cursor.gotoNextSibling()) {
+      if (!cursor.gotoParent()) {
+        reachedRoot = true;
+        break;
+      }
+    }
+  }
+
+  return dbEntries;
+}
+
+/**
  * Extract sweep call expressions from AST
  */
 function extractSweepCalls(
@@ -301,7 +431,7 @@ function extractSweepCalls(
   dictionaries: Map<string, Parser.SyntaxNode>
 ): ParsedSweep[] {
   const sweeps: ParsedSweep[] = [];
-  const sweepTypes = ['Sweep0D', 'Sweep1D', 'Sweep2D', 'SimulSweep', 'SweepQueue'];
+  const sweepTypes = ['Sweep0D', 'Sweep1D', 'Sweep2D', 'SimulSweep', 'SweepQueue', 'GateLeakage'];
 
   const cursor = node.walk();
   let reachedRoot = false;
@@ -333,7 +463,11 @@ function extractSweepCalls(
               params
             );
 
-            const sweep = {
+            // Detect context (loop and function)
+            const loopContext = detectLoopContext(assignNode, source);
+            const functionContext = detectFunctionContext(assignNode, source);
+
+            const sweep: ParsedSweep = {
               type: sweepType.toLowerCase() as any,
               name: varName,
               metrics,
@@ -342,7 +476,17 @@ function extractSweepCalls(
               diagnostics: []
             };
 
-            console.debug(`[Parser] Detected ${sweepType} '${varName}':`, { metrics, flags, complete });
+            // Add context metadata if present
+            if (loopContext) sweep.loop = loopContext;
+            if (functionContext) sweep.function = functionContext;
+
+            console.debug(`[Parser] Detected ${sweepType} '${varName}':`, {
+              metrics,
+              flags,
+              complete,
+              loop: loopContext,
+              function: functionContext
+            });
             sweeps.push(sweep);
           }
         }
@@ -372,7 +516,7 @@ function extractCallArguments(
   source: string,
   constants: Map<string, string>,
   dictionaries: Map<string, Parser.SyntaxNode>,
-  sweepType: 'Sweep0D' | 'Sweep1D' | 'Sweep2D' | 'SimulSweep' | 'SweepQueue'
+  sweepType: 'Sweep0D' | 'Sweep1D' | 'Sweep2D' | 'SimulSweep' | 'SweepQueue' | 'GateLeakage'
 ): Record<string, string> {
   const params: Record<string, string> = {};
   const positionalArgs: string[] = [];
@@ -475,6 +619,15 @@ function extractCallArguments(
             params.parameter_dict = positionalArgs[0];
           }
         }
+        break;
+
+      case 'GateLeakage':
+        // GateLeakage(set_param, track_param, max_I, limit, step, ...)
+        if (positionalArgs[0] && !params.set_param) params.set_param = positionalArgs[0];
+        if (positionalArgs[1] && !params.track_param) params.track_param = positionalArgs[1];
+        if (positionalArgs[2] && !params.max_I) params.max_I = positionalArgs[2];
+        if (positionalArgs[3] && !params.limit) params.limit = positionalArgs[3];
+        if (positionalArgs[4] && !params.step) params.step = positionalArgs[4];
         break;
 
       default:
@@ -628,7 +781,7 @@ function extractSimulSweepDict(
  * Structure sweep data into metrics and flags
  */
 function structureSweepData(
-  type: 'Sweep0D' | 'Sweep1D' | 'Sweep2D' | 'SimulSweep' | 'SweepQueue',
+  type: 'Sweep0D' | 'Sweep1D' | 'Sweep2D' | 'SimulSweep' | 'SweepQueue' | 'GateLeakage',
   params: Record<string, string>
 ): { metrics: SweepMetrics; flags: SweepFlags; complete: boolean } {
   const metrics: SweepMetrics = {};
@@ -718,9 +871,329 @@ function structureSweepData(
     case 'SweepQueue':
       complete = true;
       break;
+
+    case 'GateLeakage':
+      metrics.setParam = params.set_param;
+      metrics.trackParam = params.track_param;
+      metrics.maxCurrent = params.max_I;
+      metrics.limit = params.limit;
+      metrics.step = params.step;
+      metrics.interDelay = params.inter_delay;
+      complete = !!(metrics.setParam && metrics.trackParam && metrics.maxCurrent && metrics.limit && metrics.step);
+      flags.isFastSweep = true;
+      break;
   }
 
   return { metrics, flags, complete };
+}
+
+/**
+ * Detect if a node is inside a loop (for/while)
+ * Walks up the parent tree to find loop statements
+ */
+function detectLoopContext(
+  node: Parser.SyntaxNode,
+  source: string
+): LoopContext | null {
+  let current: Parser.SyntaxNode | null = node.parent;
+
+  while (current) {
+    if (current.type === 'for_statement') {
+      // Extract loop variable and iterable
+      // For loop structure: for <left> in <right>:
+      const leftNode = current.childForFieldName('left');
+      const rightNode = current.childForFieldName('right');
+
+      const variable = leftNode ? source.substring(leftNode.startIndex, leftNode.endIndex) : undefined;
+      const iterable = rightNode ? source.substring(rightNode.startIndex, rightNode.endIndex) : undefined;
+
+      return {
+        type: 'for',
+        variable,
+        iterable
+      };
+    }
+
+    if (current.type === 'while_statement') {
+      // Extract condition
+      const conditionNode = current.childForFieldName('condition');
+      const condition = conditionNode
+        ? source.substring(conditionNode.startIndex, conditionNode.endIndex)
+        : undefined;
+
+      return {
+        type: 'while',
+        condition
+      };
+    }
+
+    current = current.parent;
+  }
+
+  return null;
+}
+
+/**
+ * Detect if a node is inside a function definition
+ * Walks up the parent tree to find function_definition
+ */
+function detectFunctionContext(
+  node: Parser.SyntaxNode,
+  source: string
+): FunctionContext | null {
+  let current: Parser.SyntaxNode | null = node.parent;
+
+  while (current) {
+    if (current.type === 'function_definition') {
+      // Extract function name
+      const nameNode = current.childForFieldName('name');
+      const name = nameNode ? source.substring(nameNode.startIndex, nameNode.endIndex) : 'unknown';
+
+      // Check if it's an async function
+      const isAsync = current.children.some(child => child.type === 'async');
+
+      return {
+        name,
+        isAsync
+      };
+    }
+
+    current = current.parent;
+  }
+
+  return null;
+}
+
+/**
+ * Queue entry from parsing sq += (...) statements
+ */
+export interface QueueEntry {
+  queueVariable: string; // e.g., "sq"
+  position: number; // 0-indexed position
+  sweepVariable: string; // e.g., "s_1D"
+  database?: {
+    name: string;
+    experiment: string;
+    sample: string;
+  };
+}
+
+/**
+ * Extract queue entries (sq += ...) from AST
+ * Parses patterns like: sq += (DatabaseEntry(...), sweep_obj)
+ * @param dictionaries - Variable assignments for resolving DatabaseEntry references
+ */
+function extractQueueEntries(
+  node: Parser.SyntaxNode,
+  source: string,
+  dictionaries: Map<string, Parser.SyntaxNode>
+): QueueEntry[] {
+  const entries: QueueEntry[] = [];
+  const queuePositions = new Map<string, number>(); // Track position per queue variable
+
+  // Extract DatabaseEntry variable assignments for resolution
+  const dbEntries = extractDatabaseEntries(node, source);
+
+  const cursor = node.walk();
+  let reachedRoot = false;
+
+  while (!reachedRoot) {
+    // Look for augmented assignment (+=)
+    if (cursor.nodeType === 'augmented_assignment') {
+      const assignNode = cursor.currentNode();
+      const left = assignNode.childForFieldName('left');
+      const right = assignNode.childForFieldName('right');
+      const operator = assignNode.childForFieldName('operator');
+
+      if (
+        left &&
+        right &&
+        operator &&
+        left.type === 'identifier' &&
+        operator.text === '+='
+      ) {
+        const queueVar = source.substring(left.startIndex, left.endIndex);
+
+        // Get current position for this queue
+        const position = queuePositions.get(queueVar) || 0;
+        queuePositions.set(queueVar, position + 1);
+
+        // Parse the right side - should be a tuple (DatabaseEntry(...), sweep_obj)
+        const entry = parseQueueAddition(right, source, queueVar, position, dbEntries);
+        if (entry) {
+          entries.push(entry);
+        }
+      }
+    }
+
+    if (cursor.gotoFirstChild()) {
+      continue;
+    }
+
+    while (!cursor.gotoNextSibling()) {
+      if (!cursor.gotoParent()) {
+        reachedRoot = true;
+        break;
+      }
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Parse a queue addition right-hand side
+ * Handles: (DatabaseEntry(...), sweep_obj) or (db_var, sweep_obj) or just sweep_obj
+ */
+function parseQueueAddition(
+  node: Parser.SyntaxNode,
+  source: string,
+  queueVar: string,
+  position: number,
+  dbEntries: Map<string, { name: string; experiment: string; sample: string }>
+): QueueEntry | null {
+  let sweepVariable: string | null = null;
+  let database: { name: string; experiment: string; sample: string } | undefined;
+
+  // Case 1: Tuple (DatabaseEntry(...), sweep_obj) or (db_var, sweep_obj)
+  if (node.type === 'tuple' || node.type === 'parenthesized_expression') {
+    const children = [];
+    for (let i = 0; i < node.namedChildCount; i++) {
+      const child = node.namedChild(i);
+      if (child) children.push(child);
+    }
+
+    // Look for DatabaseEntry (inline call or variable reference)
+    for (const child of children) {
+      if (child.type === 'call') {
+        const funcNode = child.childForFieldName('function');
+        if (funcNode && funcNode.text === 'DatabaseEntry') {
+          // Inline DatabaseEntry call
+          const argsNode = child.childForFieldName('arguments');
+          if (argsNode) {
+            database = parseDatabaseEntry(argsNode, source);
+          }
+        }
+      } else if (child.type === 'identifier') {
+        const varName = source.substring(child.startIndex, child.endIndex);
+
+        // Check if this identifier is a DatabaseEntry variable reference
+        // Look for: db_var = DatabaseEntry(...)
+        if (dbEntries.has(varName)) {
+          database = dbEntries.get(varName);
+        } else {
+          // Otherwise it's the sweep variable
+          sweepVariable = varName;
+        }
+      }
+    }
+  }
+  // Case 2: Just sweep object (no database)
+  else if (node.type === 'identifier') {
+    sweepVariable = source.substring(node.startIndex, node.endIndex);
+  }
+
+  if (sweepVariable) {
+    return {
+      queueVariable: queueVar,
+      position,
+      sweepVariable,
+      database,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Parse DatabaseEntry arguments
+ * Expects: DatabaseEntry(database_name, exp_name, sample_name)
+ */
+function parseDatabaseEntry(
+  argsNode: Parser.SyntaxNode,
+  source: string
+): { name: string; experiment: string; sample: string } | undefined {
+  const args: string[] = [];
+
+  for (let i = 0; i < argsNode.namedChildCount; i++) {
+    const child = argsNode.namedChild(i);
+    if (child) {
+      // Extract string value (remove quotes)
+      let value = source.substring(child.startIndex, child.endIndex);
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      args.push(value);
+    }
+  }
+
+  if (args.length >= 3) {
+    return {
+      name: args[0],
+      experiment: args[1],
+      sample: args[2],
+    };
+  }
+
+  return undefined;
+}
+
+/**
+ * Link sweeps to queue entries
+ * Updates sweep.queue metadata based on queue entries
+ */
+function linkSweepsToQueue(sweeps: ParsedSweep[], queueEntries: QueueEntry[]): void {
+  // Build a map of sweep variable -> queue entry
+  const sweepToQueue = new Map<string, QueueEntry>();
+  for (const entry of queueEntries) {
+    sweepToQueue.set(entry.sweepVariable, entry);
+  }
+
+  // Count total sweeps per queue variable
+  const queueCounts = new Map<string, number>();
+  for (const entry of queueEntries) {
+    const current = queueCounts.get(entry.queueVariable) || 0;
+    queueCounts.set(entry.queueVariable, current + 1);
+  }
+
+  // Update sweeps with queue metadata
+  for (const sweep of sweeps) {
+    const queueEntry = sweepToQueue.get(sweep.name);
+    if (queueEntry) {
+      const totalInQueue = queueCounts.get(queueEntry.queueVariable) || 0;
+      sweep.queue = {
+        queueVariable: queueEntry.queueVariable,
+        position: queueEntry.position,
+        totalInQueue,
+        database: queueEntry.database,
+      };
+    }
+  }
+}
+
+/**
+ * Detect fast sweep patterns (Sweepto)
+ * GateLeakage is detected directly from the constructor now
+ */
+function detectFastSweeps(sweeps: ParsedSweep[]): void {
+  for (const sweep of sweeps) {
+    // Sweepto pattern: Sweep1D with start=current_value or start=param.get()
+    if (sweep.type === 'sweep1d') {
+      const startValue = sweep.metrics.start || '';
+      if (
+        startValue.includes('current_value') ||
+        startValue.includes('.get()') ||
+        startValue.includes('get_latest()')
+      ) {
+        sweep.type = 'sweepto';
+        sweep.flags.isFastSweep = true;
+        sweep.notes = 'Fast sweep to setpoint';
+      }
+    }
+  }
 }
 
 /**

@@ -14,7 +14,9 @@ const SWEEP_ICONS: Record<string, string> = {
   sweep1d: '📈',
   sweep2d: '📊',
   simulsweep: '🔄',
-  sweepqueue: '📋'
+  sweepqueue: '📋',
+  sweepto: '⚡',
+  gateleakage: '🔌'
 };
 
 /**
@@ -87,6 +89,22 @@ const SweepDetailsComponent: React.FC<SweepDetailsProps> = ({ sweep }) => {
       if (metrics.interDelay) params.push({ label: 'Inter Delay', value: `${metrics.interDelay} s` });
       if (metrics.plotBin) params.push({ label: 'Plot Bin', value: metrics.plotBin });
       break;
+
+    case 'sweepto':
+      if (metrics.setParam) params.push({ label: 'Parameter', value: metrics.setParam });
+      if (metrics.start) params.push({ label: 'Start', value: metrics.start });
+      if (metrics.stop) params.push({ label: 'Setpoint', value: metrics.stop });
+      if (metrics.step) params.push({ label: 'Step', value: metrics.step });
+      break;
+
+    case 'gateleakage':
+      if (metrics.setParam) params.push({ label: 'Set Param', value: metrics.setParam });
+      if (metrics.trackParam) params.push({ label: 'Track Param', value: metrics.trackParam });
+      if (metrics.maxCurrent) params.push({ label: 'Max Current', value: `${metrics.maxCurrent} A` });
+      if (metrics.limit) params.push({ label: 'Limit', value: metrics.limit });
+      if (metrics.step) params.push({ label: 'Step', value: metrics.step });
+      if (metrics.interDelay) params.push({ label: 'Delay', value: `${metrics.interDelay} s` });
+      break;
   }
 
   // Build flags list
@@ -111,6 +129,21 @@ const SweepDetailsComponent: React.FC<SweepDetailsProps> = ({ sweep }) => {
           </span>
         )}
       </div>
+
+      {/* Queue Badge */}
+      {sweep.queue && (
+        <div className="jp-SweepDetails-queue-badge">
+          📋 Queued (position {sweep.queue.position! + 1}
+          {sweep.queue.totalInQueue ? ` of ${sweep.queue.totalInQueue}` : ''})
+        </div>
+      )}
+
+      {/* Fast Sweep Badge */}
+      {flags.isFastSweep && (
+        <div className="jp-SweepDetails-fast-badge">
+          ⚡ Fast Sweep {sweep.notes ? `- ${sweep.notes}` : ''}
+        </div>
+      )}
 
       {/* Parameters Section */}
       {params.length > 0 && (
@@ -174,6 +207,71 @@ const SweepDetailsComponent: React.FC<SweepDetailsProps> = ({ sweep }) => {
               <li key={i} className="jp-SweepDetails-list-item">{param}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Database Section */}
+      {sweep.queue && sweep.queue.database && (
+        <div className="jp-SweepDetails-section">
+          <div className="jp-SweepDetails-section-title">Database Configuration</div>
+          <div className="jp-SweepDetails-grid">
+            <div className="jp-SweepDetails-label">Database</div>
+            <div className="jp-SweepDetails-value">{sweep.queue.database.name}</div>
+            <div className="jp-SweepDetails-label">Experiment</div>
+            <div className="jp-SweepDetails-value">{sweep.queue.database.experiment}</div>
+            <div className="jp-SweepDetails-label">Sample</div>
+            <div className="jp-SweepDetails-value">{sweep.queue.database.sample}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Loop Context Section */}
+      {sweep.loop && (
+        <div className="jp-SweepDetails-section">
+          <div className="jp-SweepDetails-section-title">
+            🔁 Loop Context
+          </div>
+          <div className="jp-SweepDetails-grid">
+            <div className="jp-SweepDetails-label">Type</div>
+            <div className="jp-SweepDetails-value">{sweep.loop.type.toUpperCase()} loop</div>
+            {sweep.loop.type === 'for' && (
+              <>
+                {sweep.loop.variable && (
+                  <>
+                    <div className="jp-SweepDetails-label">Variable</div>
+                    <div className="jp-SweepDetails-value">{sweep.loop.variable}</div>
+                  </>
+                )}
+                {sweep.loop.iterable && (
+                  <>
+                    <div className="jp-SweepDetails-label">Iterating over</div>
+                    <div className="jp-SweepDetails-value">{sweep.loop.iterable}</div>
+                  </>
+                )}
+              </>
+            )}
+            {sweep.loop.type === 'while' && sweep.loop.condition && (
+              <>
+                <div className="jp-SweepDetails-label">Condition</div>
+                <div className="jp-SweepDetails-value">{sweep.loop.condition}</div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Function Context Section */}
+      {sweep.function && (
+        <div className="jp-SweepDetails-section">
+          <div className="jp-SweepDetails-section-title">
+            ⚙️ Function Context
+          </div>
+          <div className="jp-SweepDetails-grid">
+            <div className="jp-SweepDetails-label">Function</div>
+            <div className="jp-SweepDetails-value">
+              {sweep.function.isAsync ? 'async ' : ''}{sweep.function.name}()
+            </div>
+          </div>
         </div>
       )}
     </div>

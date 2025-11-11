@@ -63,31 +63,45 @@
   - Add `generateSweepto(params)` and `generateGateLeakage(params)` returning `{ setup, start }`.
   - Update exports & type definitions in `src/types/index.d.ts`.
 
-## Phase 5 – Parser, Details Panel, and Queue Analytics
-- [ ] **Tree-Sitter Enhancements (`src/toc/parser.ts`)**
-  - Detect queue definitions (`SweepQueue()` and `sq += ...`) and map sweeps back to queue entries (use comment markers or generated IDs).
+## Phase 5 – Parser, Details Panel, and Queue Analytics ✅
+- [x] **Tree-Sitter Enhancements (`src/toc/parser.ts`)**
+  - Detect queue definitions (`SweepQueue()` and `sq += ...`) and map sweeps back to queue entries.
   - Support fast sweep templates (Sweepto/GateLeakage positional args).
-- [ ] **Details Panel (`src/toc/panel.tsx`)**
-  - Display “Queued (position N)” badge when a sweep originates from the queue.
-  - Show database target and any loop/function context (from `TODO_enhanced_queue.md` ideas).
-- [ ] **Queue Analytics (optional)**
-  - Surface queue summary in details panel (total sweeps, loops, function callbacks).
-  - (Deferred) ready to integrate loop/function metadata once implemented.
+  - Extract DatabaseEntry metadata from queue additions.
+  - Link sweeps to queue entries via sweep variable names.
+  - Count total sweeps per queue for analytics.
+  - Detect loop context (for/while loops) with variable/iterable/condition extraction.
+  - Detect function context with function name and async detection.
+  - **Cross-cell queue linking**: Two-pass approach in model.ts aggregates queue entries notebook-wide before linking sweeps.
+  - **Position accumulation**: Queue positions correctly accumulate across cells (not reset per-cell).
+  - **DatabaseEntry variable resolution**: Supports both inline `DatabaseEntry(...)` and variable references like `db_entry = DatabaseEntry(...); sq += (db_entry, s)`.
+- [x] **Details Panel (`src/toc/panel.tsx`)**
+  - Display "Queued (position N of M)" badge when a sweep originates from the queue.
+  - Show database target (database name, experiment, sample).
+  - Display fast sweep badges for Sweepto and GateLeakage patterns.
+  - Add icons for sweepto (⚡) and gateleakage (🔌) types.
+  - Loop context section: shows loop type, iteration variable/iterable (FOR) or condition (WHILE).
+  - Function context section: shows function name and async status.
+- [x] **Queue Analytics (Medium Version)**
+  - Queue summary: position X of Y total sweeps in queue.
+  - Loop context section: shows loop type (FOR/WHILE), iteration variable, iterable, or condition.
+  - Function context section: shows function name and async status.
+  - All context metadata extracted via AST parent tree walking.
 
-## Phase 6 – Testing & Documentation
-- [ ] **Automated Tests**
+## Phase 6 – Testing & Documentation ⏸️
+- [ ] **Automated Tests** (Deferred to future iteration)
   - Add queue store unit tests under `tests/queueStore.test.ts`.
   - Snapshot tests for `exportSweepQueue` outputs (with/without DB).
   - Jest tests for fast sweep generators.
-- [ ] **Manual QA Checklist**
+- [ ] **Manual QA Checklist** (Deferred to future iteration)
   - Document in `USAGE.md`: build mixed queue, edit entries, export script, run in MeasureIt environment.
-- [ ] **Docs**
+- [x] **Docs**
   - Update README/USAGE with queue workflow, fast sweeps, runtime notes.
   - Add tooltips inside Queue Manager + Fast Sweeps form.
 
-## Phase 7 – Release Preparation
-- [ ] `jlpm build`
-- [ ] `pip install -e .`
-- [ ] `jupyter labextension list`
-- [ ] Bump version (`package.json`, `pyproject.toml`)
-- [ ] Tag release + update changelog summarising queue manager & fast sweeps.
+## Phase 7 – Release Preparation ✅
+- [x] Bump version (`package.json`, `pyproject.toml`) - v0.2.0
+- [x] Create CHANGELOG.md summarising queue manager & fast sweeps
+- [x] `jlpm build` - Built successfully
+- [x] `pip install -e .` - Installed successfully
+- [x] `jupyter labextension list` - Extension enabled as v0.2.0

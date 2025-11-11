@@ -5,7 +5,14 @@
 import { TableOfContentsModel } from '@jupyterlab/toc';
 import { NotebookPanel } from '@jupyterlab/notebook';
 import { TableOfContents } from '@jupyterlab/toc';
-import { parseSweeps, ParserInitError, ParseError, ParsedSweep } from './parser';
+import {
+  parseSweeps,
+  extractQueueEntriesFromSource,
+  QueueEntry,
+  ParserInitError,
+  ParseError,
+  ParsedSweep
+} from './parser';
 import { formatSweepAsText, formatSweepFallback } from './components';
 import { sweepDetailsStore } from './store';
 
@@ -14,7 +21,7 @@ import { sweepDetailsStore } from './store';
  */
 export interface ISweepHeading extends TableOfContents.IHeading {
   cellIndex?: number;
-  sweepType?: 'sweep0d' | 'sweep1d' | 'sweep2d' | 'simulsweep' | 'sweepqueue';
+  sweepType?: 'sweep0d' | 'sweep1d' | 'sweep2d' | 'simulsweep' | 'sweepqueue' | 'sweepto' | 'gateleakage';
   sweepInfo?: {
     name?: string;
     params?: Record<string, any>;
@@ -74,6 +81,34 @@ export class SweepNotebookTocModel extends TableOfContentsModel<TableOfContents.
     const cells = notebook.model.sharedModel.cells;
     let lastMarkdownLevel = 0; // Track the last markdown heading level
 
+    // FIRST PASS: Collect all queue entries from all cells
+    const notebookQueueEntries: QueueEntry[] = [];
+    const queuePositions = new Map<string, number>(); // Track position per queue variable
+
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || cell.cell_type !== 'code') continue;
+
+      try {
+        const cellQueueEntries = await extractQueueEntriesFromSource(cell.source as string);
+
+        // Renumber positions to be notebook-wide
+        for (const entry of cellQueueEntries) {
+          const currentPos = queuePositions.get(entry.queueVariable) || 0;
+          queuePositions.set(entry.queueVariable, currentPos + 1);
+
+          // Create new entry with corrected position
+          notebookQueueEntries.push({
+            ...entry,
+            position: currentPos
+          });
+        }
+      } catch (err) {
+        // Ignore errors in first pass
+      }
+    }
+
+    // SECOND PASS: Parse sweeps and build headings with queue context
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (!cell) continue;
@@ -91,7 +126,12 @@ export class SweepNotebookTocModel extends TableOfContentsModel<TableOfContents.
 
       // Extract sweep definitions from code cells
       if (cell.cell_type === 'code') {
-        const sweepHeadings = await this.extractSweepHeadings(cell.source as string, i, lastMarkdownLevel);
+        const sweepHeadings = await this.extractSweepHeadings(
+          cell.source as string,
+          i,
+          lastMarkdownLevel,
+          notebookQueueEntries
+        );
         headings.push(...sweepHeadings);
       }
     }
@@ -129,7 +169,8 @@ export class SweepNotebookTocModel extends TableOfContentsModel<TableOfContents.
   private async extractSweepHeadings(
     source: string,
     cellIndex: number,
-    parentLevel: number
+    parentLevel: number,
+    notebookQueueEntries?: QueueEntry[]
   ): Promise<ISweepHeading[]> {
     const headings: ISweepHeading[] = [];
 
@@ -138,7 +179,8 @@ export class SweepNotebookTocModel extends TableOfContentsModel<TableOfContents.
 
     try {
       // Use tree-sitter parser to extract sweep details
-      const sweeps = await parseSweeps(source);
+      // Pass notebook-level queue entries for cross-cell linking
+      const sweeps = await parseSweeps(source, notebookQueueEntries);
 
       // Icon map for sweep types
       const icons: Record<string, string> = {
@@ -146,7 +188,9 @@ export class SweepNotebookTocModel extends TableOfContentsModel<TableOfContents.
         sweep1d: '📈',
         sweep2d: '📊',
         simulsweep: '🔄',
-        sweepqueue: '📋'
+        sweepqueue: '📋',
+        sweepto: '⚡',
+        gateleakage: '🔌'
       };
 
       // Convert parsed sweeps to headings with polished formatting

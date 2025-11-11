@@ -88,6 +88,28 @@
   cursor: help;
 }
 
+/* Queue badge */
+.jp-SweepDetails-queue-badge {
+  padding: 8px 12px;
+  background-color: var(--jp-brand-color3);
+  border-left: 3px solid var(--jp-brand-color1);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--jp-ui-font-color0);
+}
+
+/* Fast sweep badge */
+.jp-SweepDetails-fast-badge {
+  padding: 8px 12px;
+  background-color: var(--jp-warn-color3);
+  border-left: 3px solid var(--jp-warn-color1);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--jp-ui-font-color0);
+}
+
 /* Section styling */
 .jp-SweepDetails-section {
   display: flex;
