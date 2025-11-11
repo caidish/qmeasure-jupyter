@@ -20,13 +20,13 @@ export interface CustomParamEntry {
 
 export interface BaseSweepParameters {
   sweep_name?: string;
-  inter_delay: number;
-  save_data: boolean;
-  plot_data: boolean;
-  plot_bin: number;
+  inter_delay?: number;
+  save_data?: boolean;
+  plot_data?: boolean;
+  plot_bin?: number;
   complete_func?: string;
-  suppress_output: boolean;
-  follow_params: string[];
+  suppress_output?: boolean;
+  follow_params?: string[];
   custom_params?: CustomParamEntry[];
 }
 
@@ -100,9 +100,10 @@ export interface SweeptoParameters {
   parameter_path: string;
   setpoint: number;
   step: number;
-  save_data: boolean;
-  plot_data: boolean;
-  plot_bin: number;
+  inter_delay?: number;
+  save_data?: boolean;
+  plot_data?: boolean;
+  plot_bin?: number;
 }
 
 /**
@@ -115,9 +116,9 @@ export interface GateLeakageParameters {
   max_current: number;
   limit: number;
   step: number;
-  inter_delay: number;
-  save_data: boolean;
-  plot_data: boolean;
+  inter_delay?: number;
+  save_data?: boolean;
+  plot_data?: boolean;
 }
 
 /**

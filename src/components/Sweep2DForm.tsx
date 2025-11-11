@@ -87,15 +87,6 @@ const SWEEP2D_FIELDS: FormField[] = [
   },
   // Additional parameters
   {
-    name: "inter_delay",
-    label: "Inter Delay",
-    type: "number",
-    default: 0.1,
-    min: 0,
-    unit: "s",
-    help: "Delay between inner sweep points",
-  },
-  {
     name: "outer_delay",
     label: "Outer Delay",
     type: "number",
@@ -126,38 +117,6 @@ const SWEEP2D_FIELDS: FormField[] = [
     default: 1,
     help: "Step scale factor",
   },
-  {
-    name: "save_data",
-    label: "Save to Database",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_data",
-    label: "Live Plotting",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_bin",
-    label: "Plot Bin Size",
-    type: "number",
-    default: 1,
-    min: 1,
-  },
-  {
-    name: "follow_params",
-    label: "Follow Parameters",
-    type: "textarea",
-    default: "",
-    help: "Enter one parameter per line",
-  },
-  {
-    name: "suppress_output",
-    label: "Suppress Output",
-    type: "boolean",
-    default: false,
-  },
 ];
 
 export const Sweep2DForm: React.FC<Sweep2DFormProps> = ({
@@ -183,15 +142,7 @@ export const Sweep2DForm: React.FC<Sweep2DFormProps> = ({
   // Update form when initialState changes (for editing queued sweeps)
   React.useEffect(() => {
     if (initialState) {
-      // Normalize follow_params: convert array to newline-separated string
-      const followParams = Array.isArray(initialState.follow_params)
-        ? initialState.follow_params.join("\n")
-        : initialState.follow_params ?? "";
-
-      setValuesState({
-        ...initialState,
-        follow_params: followParams,
-      });
+      setValuesState(initialState);
       setCustomParams(initialState.custom_params || []);
     }
   }, [initialState]);
@@ -264,21 +215,10 @@ export const Sweep2DForm: React.FC<Sweep2DFormProps> = ({
       out_start: v.out_start,
       out_stop: v.out_stop,
       out_step: v.out_step,
-      inter_delay: v.inter_delay,
       outer_delay: v.outer_delay,
       out_ministeps: v.out_ministeps,
       err: v.err,
       back_multiplier: v.back_multiplier,
-      save_data: v.save_data,
-      plot_data: v.plot_data,
-      plot_bin: v.plot_bin,
-      suppress_output: v.suppress_output,
-      follow_params: v.follow_params
-        ? v.follow_params
-            .split("\n")
-            .map((p: string) => p.trim())
-            .filter((p: string) => p)
-        : [],
       custom_params: customParams.filter((p) => p.key.trim() !== ""),
     };
   };

@@ -55,6 +55,14 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
     null,
   );
 
+  // Shared parameters for all sweeps
+  const [followParams, setFollowParams] = useState<string>("");
+  const [sharedSaveData, setSharedSaveData] = useState<boolean>(true);
+  const [sharedPlotData, setSharedPlotData] = useState<boolean>(true);
+  const [sharedSuppressOutput, setSharedSuppressOutput] = useState<boolean>(true);
+  const [sharedInterDelay, setSharedInterDelay] = useState<number>(0.01);
+  const [sharedPlotBin, setSharedPlotBin] = useState<number>(1);
+
   // Subscribe to queue store for editing
   const queueStoreHook = useQueueStore();
   const { selectedId, entries } = queueStoreHook.state;
@@ -111,17 +119,28 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
   };
 
   const handleGenerate = (params: any) => {
+    // Inject shared parameters into params
+    const paramsWithShared = {
+      ...params,
+      follow_params: followParams ? followParams.split(',').map(p => p.trim()).filter(p => p) : [],
+      save_data: sharedSaveData,
+      plot_data: sharedPlotData,
+      suppress_output: sharedSuppressOutput,
+      inter_delay: sharedInterDelay,
+      plot_bin: sharedPlotBin
+    };
+
     let sweepCode;
     let sweepName = "s_1D";
 
     if (selectedTab === "fastsweeps") {
       // Determine sweep type by checking params structure
-      if ("parameter_path" in params) {
-        sweepCode = generateSweepto(params as SweeptoParameters);
-        sweepName = (params as SweeptoParameters).sweep_name || "s_to";
-      } else if ("track_param" in params) {
-        sweepCode = generateGateLeakage(params as GateLeakageParameters);
-        sweepName = (params as GateLeakageParameters).sweep_name || "s_gate";
+      if ("parameter_path" in paramsWithShared) {
+        sweepCode = generateSweepto(paramsWithShared as SweeptoParameters);
+        sweepName = (paramsWithShared as SweeptoParameters).sweep_name || "s_to";
+      } else if ("track_param" in paramsWithShared) {
+        sweepCode = generateGateLeakage(paramsWithShared as GateLeakageParameters);
+        sweepName = (paramsWithShared as GateLeakageParameters).sweep_name || "s_gate";
       } else {
         alert("Unknown fast sweep type");
         return;
@@ -129,20 +148,20 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
     } else {
       switch (selectedTab as SweepType) {
         case "sweep0d":
-          sweepCode = generateSweep0D(params as Sweep0DParameters);
-          sweepName = (params as Sweep0DParameters).sweep_name || "s_0D";
+          sweepCode = generateSweep0D(paramsWithShared as Sweep0DParameters);
+          sweepName = (paramsWithShared as Sweep0DParameters).sweep_name || "s_0D";
           break;
         case "sweep1d":
-          sweepCode = generateSweep1D(params as Sweep1DParameters);
-          sweepName = (params as Sweep1DParameters).sweep_name || "s_1D";
+          sweepCode = generateSweep1D(paramsWithShared as Sweep1DParameters);
+          sweepName = (paramsWithShared as Sweep1DParameters).sweep_name || "s_1D";
           break;
         case "sweep2d":
-          sweepCode = generateSweep2D(params as Sweep2DParameters);
-          sweepName = (params as Sweep2DParameters).sweep_name || "s_2D";
+          sweepCode = generateSweep2D(paramsWithShared as Sweep2DParameters);
+          sweepName = (paramsWithShared as Sweep2DParameters).sweep_name || "s_2D";
           break;
         case "simulsweep":
-          sweepCode = generateSimulSweep(params as SimulSweepParameters);
-          sweepName = (params as SimulSweepParameters).sweep_name || "s_simul";
+          sweepCode = generateSimulSweep(paramsWithShared as SimulSweepParameters);
+          sweepName = (paramsWithShared as SimulSweepParameters).sweep_name || "s_simul";
           break;
         default:
           alert("This sweep type is not yet implemented");
@@ -151,14 +170,14 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
     }
 
     // If save_data is true, defer start code until after database setup
-    const includeStart = !params.save_data;
+    const includeStart = !sharedSaveData;
     const code = renderSweepCode(sweepCode, includeStart);
 
     setLastSweepName(sweepName);
     insertCode(code);
 
     // Store start code for database form if save_data is enabled
-    if (params.save_data) {
+    if (sharedSaveData) {
       setPendingStartCode(sweepCode.start);
       setSelectedTab("database");
     } else {
@@ -208,6 +227,17 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
   };
 
   const handleAddToQueue = (params: any) => {
+    // Inject shared parameters into params
+    const paramsWithShared = {
+      ...params,
+      follow_params: followParams ? followParams.split(',').map(p => p.trim()).filter(p => p) : [],
+      save_data: sharedSaveData,
+      plot_data: sharedPlotData,
+      suppress_output: sharedSuppressOutput,
+      inter_delay: sharedInterDelay,
+      plot_bin: sharedPlotBin
+    };
+
     let sweepCode;
     let sweepName = "Sweep";
     let sweepType: QueueEntry["sweepType"] = "sweep1d";
@@ -215,11 +245,11 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
     if (selectedTab === "fastsweeps") {
       // Determine sweep type by checking params structure
       if ("parameter_path" in params) {
-        sweepCode = generateSweepto(params as SweeptoParameters);
+        sweepCode = generateSweepto(paramsWithShared as SweeptoParameters);
         sweepName = (params as SweeptoParameters).sweep_name || "Sweepto";
         sweepType = "sweepto";
       } else if ("track_param" in params) {
-        sweepCode = generateGateLeakage(params as GateLeakageParameters);
+        sweepCode = generateGateLeakage(paramsWithShared as GateLeakageParameters);
         sweepName = (params as GateLeakageParameters).sweep_name || "GateLeakage";
         sweepType = "gateleakage";
       } else {
@@ -229,22 +259,22 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
     } else {
       switch (selectedTab as SweepType) {
         case "sweep0d":
-          sweepCode = generateSweep0D(params as Sweep0DParameters);
+          sweepCode = generateSweep0D(paramsWithShared as Sweep0DParameters);
           sweepName = (params as Sweep0DParameters).sweep_name || "Sweep0D";
           sweepType = "sweep0d";
           break;
         case "sweep1d":
-          sweepCode = generateSweep1D(params as Sweep1DParameters);
+          sweepCode = generateSweep1D(paramsWithShared as Sweep1DParameters);
           sweepName = (params as Sweep1DParameters).sweep_name || "Sweep1D";
           sweepType = "sweep1d";
           break;
         case "sweep2d":
-          sweepCode = generateSweep2D(params as Sweep2DParameters);
+          sweepCode = generateSweep2D(paramsWithShared as Sweep2DParameters);
           sweepName = (params as Sweep2DParameters).sweep_name || "Sweep2D";
           sweepType = "sweep2d";
           break;
         case "simulsweep":
-          sweepCode = generateSimulSweep(params as SimulSweepParameters);
+          sweepCode = generateSimulSweep(paramsWithShared as SimulSweepParameters);
           sweepName = (params as SimulSweepParameters).sweep_name || "SimulSweep";
           sweepType = "simulsweep";
           break;
@@ -261,7 +291,7 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
           name: sweepName,
           sweepType: sweepType,
           code: sweepCode,
-          params: params,
+          params: paramsWithShared,
           modifiedAt: Date.now(),
         }
       : {
@@ -269,7 +299,7 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
           name: sweepName,
           sweepType: sweepType,
           code: sweepCode,
-          params: params,
+          params: paramsWithShared,
           createdAt: Date.now(),
           modifiedAt: Date.now(),
         };
@@ -287,7 +317,7 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
     );
 
     // If save_data is enabled, switch to database tab for configuration
-    if (params.save_data && sweepCode.start) {
+    if (sharedSaveData && sweepCode.start) {
       setLastQueuedEntryId(queueEntry.id); // Store for DB config update
       setPendingStartCode(sweepCode.start);
       setSelectedTab("database");
@@ -429,7 +459,84 @@ const SweepManagerComponent: React.FC<SweepManagerComponentProps> = ({
         </button>
       </div>
 
-      <div className="qmeasure-content">{renderForm()}</div>
+      {/* Shared Parameters Bar - Always visible at top */}
+      {selectedTab !== "database" && (
+        <div className="qmeasure-shared-params-bar">
+          <div className="qmeasure-shared-params-group">
+            <label className="qmeasure-shared-label">
+              Follow Parameters
+              <span className="qmeasure-help-icon" title="Comma-separated list of parameters to measure at each sweep point">
+                (?)
+              </span>
+            </label>
+            <input
+              type="text"
+              className="qmeasure-shared-input"
+              value={followParams}
+              onChange={(e) => setFollowParams(e.target.value)}
+              placeholder="dmm.voltage, lockin.X"
+            />
+          </div>
+
+          <div className="qmeasure-shared-params-row">
+            <div className="qmeasure-shared-params-toggles">
+              <label className="qmeasure-shared-checkbox">
+                <input
+                  type="checkbox"
+                  checked={sharedSaveData}
+                  onChange={(e) => setSharedSaveData(e.target.checked)}
+                />
+                <span>Save to Database</span>
+              </label>
+              <label className="qmeasure-shared-checkbox">
+                <input
+                  type="checkbox"
+                  checked={sharedPlotData}
+                  onChange={(e) => setSharedPlotData(e.target.checked)}
+                />
+                <span>Live Plotting</span>
+              </label>
+              <label className="qmeasure-shared-checkbox">
+                <input
+                  type="checkbox"
+                  checked={sharedSuppressOutput}
+                  onChange={(e) => setSharedSuppressOutput(e.target.checked)}
+                />
+                <span>Suppress Output</span>
+              </label>
+            </div>
+
+            <div className="qmeasure-shared-params-numbers">
+              <div className="qmeasure-shared-number-group">
+                <label className="qmeasure-shared-number-label">Inter Delay (s)</label>
+                <input
+                  type="number"
+                  className="qmeasure-shared-number-input"
+                  value={sharedInterDelay}
+                  onChange={(e) => setSharedInterDelay(parseFloat(e.target.value) || 0.01)}
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <div className="qmeasure-shared-number-group">
+                <label className="qmeasure-shared-number-label">Plot Bin</label>
+                <input
+                  type="number"
+                  className="qmeasure-shared-number-input"
+                  value={sharedPlotBin}
+                  onChange={(e) => setSharedPlotBin(parseInt(e.target.value) || 1)}
+                  step="1"
+                  min="1"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="qmeasure-content">
+        {renderForm()}
+      </div>
     </div>
   );
 };

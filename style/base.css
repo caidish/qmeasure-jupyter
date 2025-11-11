@@ -548,3 +548,122 @@
 .qmeasure-editing-cancel:hover {
   background-color: var(--jp-layout-color3);
 }
+
+/* Shared Parameters Bar (Floating at top) */
+.qmeasure-shared-params-bar {
+  background-color: var(--jp-layout-color1);
+  border-bottom: 2px solid var(--jp-brand-color2);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.qmeasure-shared-params-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qmeasure-shared-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--jp-brand-color1);
+  display: flex;
+  align-items: center;
+}
+
+.qmeasure-shared-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background-color: var(--jp-input-background);
+  color: var(--jp-ui-font-color1);
+  font-size: 13px;
+  font-family: var(--jp-code-font-family);
+}
+
+.qmeasure-shared-input:focus {
+  outline: none;
+  border-color: var(--jp-brand-color1);
+  box-shadow: 0 0 0 1px var(--jp-brand-color1);
+}
+
+.qmeasure-shared-params-toggles {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.qmeasure-shared-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--jp-ui-font-color1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.qmeasure-shared-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.qmeasure-shared-checkbox:hover {
+  color: var(--jp-brand-color1);
+}
+
+.qmeasure-help-icon {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--jp-ui-font-color2);
+  cursor: help;
+}
+
+.qmeasure-shared-params-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.qmeasure-shared-params-numbers {
+  display: flex;
+  gap: 12px;
+}
+
+.qmeasure-shared-number-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.qmeasure-shared-number-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--jp-ui-font-color2);
+}
+
+.qmeasure-shared-number-input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 3px;
+  background-color: var(--jp-input-background);
+  color: var(--jp-ui-font-color1);
+  font-size: 13px;
+  font-family: var(--jp-code-font-family);
+}
+
+.qmeasure-shared-number-input:focus {
+  outline: none;
+  border-color: var(--jp-brand-color1);
+  box-shadow: 0 0 0 1px var(--jp-brand-color1);
+}

@@ -79,15 +79,6 @@ const SWEEP1D_FIELDS: FormField[] = [
     help: "What to plot on the x-axis",
   },
   {
-    name: "inter_delay",
-    label: "Inter Delay",
-    type: "number",
-    default: 0.1,
-    min: 0,
-    unit: "s",
-    help: "Time to wait between data points",
-  },
-  {
     name: "err",
     label: "Error Tolerance",
     type: "number",
@@ -101,38 +92,6 @@ const SWEEP1D_FIELDS: FormField[] = [
     type: "number",
     default: 1,
     help: "Step size multiplier after direction change",
-  },
-  {
-    name: "save_data",
-    label: "Save to Database",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_data",
-    label: "Live Plotting",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_bin",
-    label: "Plot Bin Size",
-    type: "number",
-    default: 1,
-    min: 1,
-  },
-  {
-    name: "follow_params",
-    label: "Follow Parameters",
-    type: "textarea",
-    default: "",
-    help: "Enter one parameter per line (e.g., dmm.voltage)",
-  },
-  {
-    name: "suppress_output",
-    label: "Suppress Output",
-    type: "boolean",
-    default: false,
   },
 ];
 
@@ -241,17 +200,6 @@ export const Sweep1DForm: React.FC<Sweep1DFormProps> = ({
       x_axis_time: v.x_axis_time,
       err: v.err,
       back_multiplier: v.back_multiplier,
-      inter_delay: v.inter_delay,
-      save_data: v.save_data,
-      plot_data: v.plot_data,
-      plot_bin: v.plot_bin,
-      suppress_output: v.suppress_output,
-      follow_params: v.follow_params
-        ? v.follow_params
-            .split("\n")
-            .map((p: string) => p.trim())
-            .filter((p: string) => p)
-        : [],
       custom_params: customParams.filter((p) => p.key.trim() !== ""),
     };
   };

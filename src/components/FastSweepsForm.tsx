@@ -48,25 +48,6 @@ const SWEEPTO_FIELDS: FormField[] = [
     required: true,
     help: "Step size for the sweep",
   },
-  {
-    name: "save_data",
-    label: "Save to Database",
-    type: "boolean",
-    default: false,
-  },
-  {
-    name: "plot_data",
-    label: "Live Plotting",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_bin",
-    label: "Plot Bin Size",
-    type: "number",
-    default: 1,
-    min: 1,
-  },
 ];
 
 // Form fields for GateLeakage
@@ -113,27 +94,6 @@ const GATELEAKAGE_FIELDS: FormField[] = [
     type: "number",
     required: true,
     help: "Step size for the sweep",
-  },
-  {
-    name: "inter_delay",
-    label: "Inter Delay",
-    type: "number",
-    default: 0.01,
-    min: 0,
-    unit: "s",
-    help: "Time to wait between data points",
-  },
-  {
-    name: "save_data",
-    label: "Save to Database",
-    type: "boolean",
-    default: false,
-  },
-  {
-    name: "plot_data",
-    label: "Live Plotting",
-    type: "boolean",
-    default: true,
   },
 ];
 
@@ -239,9 +199,6 @@ export const FastSweepsForm: React.FC<FastSweepsFormProps> = ({
         parameter_path: v.parameter_path,
         setpoint: v.setpoint,
         step: v.step,
-        save_data: v.save_data,
-        plot_data: v.plot_data,
-        plot_bin: v.plot_bin,
       } as SweeptoParameters;
     } else {
       return {
@@ -251,9 +208,6 @@ export const FastSweepsForm: React.FC<FastSweepsFormProps> = ({
         max_current: v.max_current,
         limit: v.limit,
         step: v.step,
-        inter_delay: v.inter_delay,
-        save_data: v.save_data,
-        plot_data: v.plot_data,
       } as GateLeakageParameters;
     }
   };

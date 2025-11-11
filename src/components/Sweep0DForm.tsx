@@ -36,51 +36,6 @@ const SWEEP0D_FIELDS: FormField[] = [
     unit: "s",
     help: "Duration of the time-based measurement in seconds",
   },
-  {
-    name: "inter_delay",
-    label: "Inter Delay",
-    type: "number",
-    default: 0.1,
-    min: 0.001,
-    unit: "s",
-    help: "Time to wait between data points",
-  },
-  {
-    name: "save_data",
-    label: "Save to Database",
-    type: "boolean",
-    default: true,
-    help: "Save measurement data to QCoDeS database",
-  },
-  {
-    name: "plot_data",
-    label: "Live Plotting",
-    type: "boolean",
-    default: true,
-    help: "Enable real-time data plotting",
-  },
-  {
-    name: "plot_bin",
-    label: "Plot Bin Size",
-    type: "number",
-    default: 1,
-    min: 1,
-    help: "Number of points to collect before updating plot",
-  },
-  {
-    name: "follow_params",
-    label: "Parameters to Track",
-    type: "textarea",
-    default: "",
-    help: "Enter parameters (e.g., dmm.voltage, keithley.current) one per line",
-  },
-  {
-    name: "suppress_output",
-    label: "Suppress Output",
-    type: "boolean",
-    default: false,
-    help: "Suppress console output during measurement",
-  },
 ];
 
 export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({
@@ -183,17 +138,6 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({
     return {
       sweep_name: v.sweep_name,
       max_time: v.max_time,
-      inter_delay: v.inter_delay,
-      save_data: v.save_data,
-      plot_data: v.plot_data,
-      plot_bin: v.plot_bin,
-      suppress_output: v.suppress_output,
-      follow_params: v.follow_params
-        ? v.follow_params
-            .split("\n")
-            .map((p: string) => p.trim())
-            .filter((p: string) => p)
-        : [],
       custom_params: customParams.filter((p) => p.key.trim() !== ""),
     };
   };

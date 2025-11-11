@@ -45,53 +45,12 @@ const SIMULSWEEP_GLOBAL_FIELDS: FormField[] = [
     help: "Continue sweeping indefinitely",
   },
   {
-    name: "inter_delay",
-    label: "Inter Delay",
-    type: "number",
-    default: 0.1,
-    min: 0,
-    unit: "s",
-    help: "Time to wait between data points",
-  },
-  {
     name: "err",
     label: "Error Tolerance",
     type: "number",
     default: 0.01,
     min: 0,
     help: "Tolerance for rounding errors",
-  },
-  {
-    name: "save_data",
-    label: "Save to Database",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_data",
-    label: "Live Plotting",
-    type: "boolean",
-    default: true,
-  },
-  {
-    name: "plot_bin",
-    label: "Plot Bin Size",
-    type: "number",
-    default: 1,
-    min: 1,
-  },
-  {
-    name: "follow_params",
-    label: "Follow Parameters",
-    type: "textarea",
-    default: "",
-    help: "Enter one parameter per line (e.g., dmm.voltage)",
-  },
-  {
-    name: "suppress_output",
-    label: "Suppress Output",
-    type: "boolean",
-    default: false,
   },
 ];
 
@@ -126,15 +85,7 @@ export const SimulSweepForm: React.FC<SimulSweepFormProps> = ({
   // Update form when initialState changes (for editing queued sweeps)
   React.useEffect(() => {
     if (initialState) {
-      // Normalize follow_params: convert array to newline-separated string
-      const followParams = Array.isArray(initialState.follow_params)
-        ? initialState.follow_params.join("\n")
-        : initialState.follow_params ?? "";
-
-      setValuesState({
-        ...initialState,
-        follow_params: followParams,
-      });
+      setValuesState(initialState);
       setCustomParams(initialState.custom_params || []);
       setParams(
         initialState.params || [
@@ -262,18 +213,7 @@ export const SimulSweepForm: React.FC<SimulSweepFormProps> = ({
       })),
       bidirectional: v.bidirectional ?? false,
       continual: v.continual ?? false,
-      inter_delay: v.inter_delay,
       err: v.err ?? 0.01,
-      save_data: v.save_data ?? true,
-      plot_data: v.plot_data ?? true,
-      plot_bin: v.plot_bin,
-      suppress_output: v.suppress_output ?? false,
-      follow_params: v.follow_params
-        ? v.follow_params
-            .split("\n")
-            .map((p: string) => p.trim())
-            .filter((p: string) => p)
-        : [],
       custom_params: customParams.filter((p) => p.key.trim() !== ""),
     };
   };

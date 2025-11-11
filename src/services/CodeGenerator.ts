@@ -108,7 +108,7 @@ export function renderSweepCode(
 export function generateSweep0D(params: Sweep0DParameters): SweepCode {
   const sweepName = params.sweep_name || "s_0D";
   const followParamsCode =
-    params.follow_params.length > 0
+    params.follow_params && params.follow_params.length > 0
       ? params.follow_params
           .map((p) => `${sweepName}.follow_param(${p})`)
           .join("\n")
@@ -154,7 +154,7 @@ ${sweepName}.start()`;
 export function generateSweep1D(params: Sweep1DParameters): SweepCode {
   const sweepName = params.sweep_name || "s_1D";
   const followParamsCode =
-    params.follow_params.length > 0
+    params.follow_params && params.follow_params.length > 0
       ? params.follow_params
           .map((p) => `${sweepName}.follow_param(${p})`)
           .join("\n")
@@ -172,7 +172,7 @@ export function generateSweep1D(params: Sweep1DParameters): SweepCode {
       : "# No custom parameters";
 
   const setup = `# Generated Sweep1D - Single parameter sweep
-set_param = station.${toPython(params.set_param)}
+set_param = ${toPython(params.set_param)}
 
 ${sweepName} = Sweep1D(
     set_param=set_param,
@@ -210,7 +210,7 @@ ${sweepName}.start()`;
 export function generateSweep2D(params: Sweep2DParameters): SweepCode {
   const sweepName = params.sweep_name || "s_2D";
   const followParamsCode =
-    params.follow_params.length > 0
+    params.follow_params && params.follow_params.length > 0
       ? params.follow_params
           .map((p) => `${sweepName}.follow_param(${p})`)
           .join("\n")
@@ -230,7 +230,7 @@ export function generateSweep2D(params: Sweep2DParameters): SweepCode {
   const setup = `# Generated Sweep2D - 2D parameter sweep
 # Define inner sweep parameters
 in_params = [
-    station.${toPython(params.in_param)},  # parameter
+    ${toPython(params.in_param)},  # parameter
     ${toPython(params.in_start)},  # start
     ${toPython(params.in_stop)},   # stop
     ${toPython(params.in_step)}    # step
@@ -238,7 +238,7 @@ in_params = [
 
 # Define outer sweep parameters
 out_params = [
-    station.${toPython(params.out_param)},  # parameter
+    ${toPython(params.out_param)},  # parameter
     ${toPython(params.out_start)},  # start
     ${toPython(params.out_stop)},   # stop
     ${toPython(params.out_step)}    # step
@@ -277,7 +277,7 @@ ${sweepName}.start()`;
 export function generateSimulSweep(params: SimulSweepParameters): SweepCode {
   const sweepName = params.sweep_name || "s_simul";
   const followParamsCode =
-    params.follow_params.length > 0
+    params.follow_params && params.follow_params.length > 0
       ? params.follow_params
           .map((p) => `${sweepName}.follow_param(${p})`)
           .join("\n")
@@ -352,7 +352,7 @@ export function generateSweepto(params: SweeptoParameters): SweepCode {
 
   const setup = `# Generated Sweepto - Fast sweep to setpoint
 # Get current value for reference
-set_param = station.${toPython(params.parameter_path)}
+set_param = ${toPython(params.parameter_path)}
 current_value = set_param.get()
 
 ${sweepName} = Sweep1D(
@@ -360,6 +360,7 @@ ${sweepName} = Sweep1D(
     start=current_value,
     stop=${toPython(params.setpoint)},
     step=${toPython(params.step)},
+    inter_delay=${params.inter_delay ?? 0.01},
     save_data=${toPython(params.save_data ?? false)},
     plot_data=${toPython(params.plot_data ?? true)},
     plot_bin=${params.plot_bin ?? 1}
@@ -379,8 +380,8 @@ export function generateGateLeakage(params: GateLeakageParameters): SweepCode {
   const sweepName = params.sweep_name || "s_gate";
 
   const setup = `# Generated GateLeakage - Gate limit test
-set_param = station.${toPython(params.set_param)}
-track_param = station.${toPython(params.track_param)}
+set_param = ${toPython(params.set_param)}
+track_param = ${toPython(params.track_param)}
 
 ${sweepName} = GateLeakage(
     set_param=set_param,
