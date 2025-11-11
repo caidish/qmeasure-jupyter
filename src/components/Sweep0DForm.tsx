@@ -2,10 +2,14 @@
  * Form component for Sweep0D parameters
  */
 
-import React, { useState } from 'react';
-import { FormInput } from './FormInput';
-import { CustomParams, CustomParamEntry } from './CustomParams';
-import { FormField, Sweep0DParameters } from '../types';
+import React, { useState } from "react";
+import { FormInput } from "./FormInput";
+import { CustomParams, CustomParamEntry } from "./CustomParams";
+import { FormField, Sweep0DParameters } from "../types";
+import {
+  usePersistentForm,
+  getDefaultValues,
+} from "../hooks/usePersistentForm";
 
 interface Sweep0DFormProps {
   onGenerate: (params: Sweep0DParameters) => void;
@@ -14,88 +18,83 @@ interface Sweep0DFormProps {
 // Form field definitions for Sweep0D
 const SWEEP0D_FIELDS: FormField[] = [
   {
-    name: 'sweep_name',
-    label: 'Sweep Name',
-    type: 'text',
-    default: 's_0D',
-    help: 'Variable name for the sweep object (default: s_0D)'
+    name: "sweep_name",
+    label: "Sweep Name",
+    type: "text",
+    default: "s_0D",
+    help: "Variable name for the sweep object (default: s_0D)",
   },
   {
-    name: 'max_time',
-    label: 'Max Time',
-    type: 'number',
+    name: "max_time",
+    label: "Max Time",
+    type: "number",
     default: 60,
     min: 0,
     required: true,
-    unit: 's',
-    help: 'Duration of the time-based measurement in seconds'
+    unit: "s",
+    help: "Duration of the time-based measurement in seconds",
   },
   {
-    name: 'inter_delay',
-    label: 'Inter Delay',
-    type: 'number',
+    name: "inter_delay",
+    label: "Inter Delay",
+    type: "number",
     default: 0.1,
     min: 0.001,
-    unit: 's',
-    help: 'Time to wait between data points'
+    unit: "s",
+    help: "Time to wait between data points",
   },
   {
-    name: 'save_data',
-    label: 'Save to Database',
-    type: 'boolean',
+    name: "save_data",
+    label: "Save to Database",
+    type: "boolean",
     default: true,
-    help: 'Save measurement data to QCoDeS database'
+    help: "Save measurement data to QCoDeS database",
   },
   {
-    name: 'plot_data',
-    label: 'Live Plotting',
-    type: 'boolean',
+    name: "plot_data",
+    label: "Live Plotting",
+    type: "boolean",
     default: true,
-    help: 'Enable real-time data plotting'
+    help: "Enable real-time data plotting",
   },
   {
-    name: 'plot_bin',
-    label: 'Plot Bin Size',
-    type: 'number',
+    name: "plot_bin",
+    label: "Plot Bin Size",
+    type: "number",
     default: 1,
     min: 1,
-    help: 'Number of points to collect before updating plot'
+    help: "Number of points to collect before updating plot",
   },
   {
-    name: 'follow_params',
-    label: 'Parameters to Track',
-    type: 'textarea',
-    default: '',
-    help: 'Enter parameters (e.g., dmm.voltage, keithley.current) one per line'
+    name: "follow_params",
+    label: "Parameters to Track",
+    type: "textarea",
+    default: "",
+    help: "Enter parameters (e.g., dmm.voltage, keithley.current) one per line",
   },
   {
-    name: 'suppress_output',
-    label: 'Suppress Output',
-    type: 'boolean',
+    name: "suppress_output",
+    label: "Suppress Output",
+    type: "boolean",
     default: false,
-    help: 'Suppress console output during measurement'
-  }
+    help: "Suppress console output during measurement",
+  },
 ];
 
 export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
   // Initialize form with default values
-  const [values, setValues] = useState<Record<string, any>>(() => {
-    const defaults: Record<string, any> = {};
-    SWEEP0D_FIELDS.forEach(field => {
-      if (field.default !== undefined) {
-        defaults[field.name] = field.default;
-      }
-    });
-    return defaults;
-  });
+  const [values, setValues, resetValues] = usePersistentForm(
+    "qmeasure:sweep0d",
+    getDefaultValues(SWEEP0D_FIELDS),
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [customParams, setCustomParams] = useState<CustomParamEntry[]>([]);
 
   const handleChange = (name: string, value: any) => {
-    setValues(prev => ({ ...prev, [name]: value }));
+    setValues({ [name]: value });
     // Clear error when field is modified
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
@@ -106,16 +105,19 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    SWEEP0D_FIELDS.forEach(field => {
+    SWEEP0D_FIELDS.forEach((field) => {
       const value = values[field.name];
 
       // Check required fields
-      if (field.required && (value === undefined || value === null || value === '')) {
-        newErrors[field.name] = 'This field is required';
+      if (
+        field.required &&
+        (value === undefined || value === null || value === "")
+      ) {
+        newErrors[field.name] = "This field is required";
       }
 
       // Check number constraints
-      if (field.type === 'number' && value !== undefined && value !== '') {
+      if (field.type === "number" && value !== undefined && value !== "") {
         if (field.min !== undefined && value < field.min) {
           newErrors[field.name] = `Value must be at least ${field.min}`;
         }
@@ -143,9 +145,12 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
       plot_bin: values.plot_bin,
       suppress_output: values.suppress_output,
       follow_params: values.follow_params
-        ? values.follow_params.split('\n').map((p: string) => p.trim()).filter((p: string) => p)
+        ? values.follow_params
+            .split("\n")
+            .map((p: string) => p.trim())
+            .filter((p: string) => p)
         : [],
-      custom_params: customParams.filter(p => p.key.trim() !== '')
+      custom_params: customParams.filter((p) => p.key.trim() !== ""),
     };
 
     onGenerate(params);
@@ -158,7 +163,7 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
         Track parameters over time without sweeping any setpoints.
       </p>
 
-      {SWEEP0D_FIELDS.map(field => (
+      {SWEEP0D_FIELDS.map((field) => (
         <FormInput
           key={field.name}
           field={field}
@@ -170,12 +175,18 @@ export const Sweep0DForm: React.FC<Sweep0DFormProps> = ({ onGenerate }) => {
 
       <CustomParams value={customParams} onChange={setCustomParams} />
 
-      <button
-        className="qmeasure-button"
-        onClick={handleGenerate}
-      >
-        Generate Code
-      </button>
+      <div className="qmeasure-form-actions">
+        <button
+          className="qmeasure-button-secondary qmeasure-button-small"
+          onClick={resetValues}
+          type="button"
+        >
+          Reset to Defaults
+        </button>
+        <button className="qmeasure-button" onClick={handleGenerate}>
+          Generate Code
+        </button>
+      </div>
     </div>
   );
 };

@@ -2,7 +2,7 @@
  * Custom Parameters component for key-value parameter pairs
  */
 
-import React from 'react';
+import React from "react";
 
 export interface CustomParamEntry {
   key: string;
@@ -14,16 +14,23 @@ interface CustomParamsProps {
   onChange: (params: CustomParamEntry[]) => void;
 }
 
-export const CustomParams: React.FC<CustomParamsProps> = ({ value, onChange }) => {
+export const CustomParams: React.FC<CustomParamsProps> = ({
+  value,
+  onChange,
+}) => {
   const handleAdd = () => {
-    onChange([...value, { key: '', value: '' }]);
+    onChange([...value, { key: "", value: "" }]);
   };
 
   const handleRemove = (index: number) => {
     onChange(value.filter((_, i) => i !== index));
   };
 
-  const handleChange = (index: number, field: 'key' | 'value', newValue: string) => {
+  const handleChange = (
+    index: number,
+    field: "key" | "value",
+    newValue: string,
+  ) => {
     const updated = [...value];
     updated[index] = { ...updated[index], [field]: newValue };
     onChange(updated);
@@ -31,11 +38,11 @@ export const CustomParams: React.FC<CustomParamsProps> = ({ value, onChange }) =
 
   // Check for duplicate keys (warning only)
   const getDuplicateKeys = (): Set<string> => {
-    const keys = value.map(p => p.key.trim()).filter(k => k !== '');
+    const keys = value.map((p) => p.key.trim()).filter((k) => k !== "");
     const duplicates = new Set<string>();
     const seen = new Set<string>();
 
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (seen.has(key)) {
         duplicates.add(key);
       }
@@ -75,9 +82,11 @@ export const CustomParams: React.FC<CustomParamsProps> = ({ value, onChange }) =
                   <div className="qmeasure-form-group">
                     <input
                       type="text"
-                      className={`qmeasure-form-input ${isDuplicate ? 'qmeasure-input-warning' : ''}`}
+                      className={`qmeasure-form-input ${isDuplicate ? "qmeasure-input-warning" : ""}`}
                       value={param.key}
-                      onChange={(e) => handleChange(index, 'key', e.target.value)}
+                      onChange={(e) =>
+                        handleChange(index, "key", e.target.value)
+                      }
                       placeholder="parameter_name"
                     />
                     {isDuplicate && (
@@ -92,7 +101,9 @@ export const CustomParams: React.FC<CustomParamsProps> = ({ value, onChange }) =
                       type="text"
                       className="qmeasure-form-input"
                       value={param.value}
-                      onChange={(e) => handleChange(index, 'value', e.target.value)}
+                      onChange={(e) =>
+                        handleChange(index, "value", e.target.value)
+                      }
                       placeholder="value"
                     />
                   </div>
@@ -113,8 +124,8 @@ export const CustomParams: React.FC<CustomParamsProps> = ({ value, onChange }) =
       )}
 
       <div className="qmeasure-form-help">
-        Custom parameters are passed to the sweep using sweep.custom_param(key, value).
-        Values can be strings, numbers, or Python expressions.
+        Custom parameters are passed to the sweep using sweep.custom_param(key,
+        value). Values can be strings, numbers, or Python expressions.
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 ## Setup Development Environment
 
 ### Prerequisites
+
 - Python >= 3.8
 - Node.js (comes with conda/mamba JupyterLab install)
 - JupyterLab >= 4.0.0
@@ -36,11 +37,13 @@ jupyter labextension list
 ### Watch Mode for Development
 
 In one terminal, watch the TypeScript source and automatically rebuild:
+
 ```bash
 jlpm watch
 ```
 
 In another terminal, run JupyterLab:
+
 ```bash
 jupyter lab
 ```
@@ -101,6 +104,7 @@ qmeasure-jupyter/
 ### Extension Not Loading
 
 1. Check that the extension is installed:
+
    ```bash
    jupyter labextension list
    ```
@@ -118,11 +122,13 @@ qmeasure-jupyter/
 ### Yarn PnP Issues
 
 If you encounter `.pnp.cjs` errors, make sure `.yarnrc.yml` contains:
+
 ```yaml
 nodeLinker: node-modules
 ```
 
 Then reinstall dependencies:
+
 ```bash
 rm -rf .yarn .pnp.* node_modules
 jlpm install
@@ -146,6 +152,7 @@ If you see type errors from dependencies, make sure `skipLibCheck: true` is set 
 ## Next Steps
 
 Week 2 tasks (from TODO_plugin.md):
+
 - Build SweepManager with tabbed interface ✓ (basic version done)
 - Create forms for Sweep0D, Sweep1D, Sweep2D
 - Implement text inputs for all parameters

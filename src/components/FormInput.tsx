@@ -2,8 +2,8 @@
  * Reusable form input components
  */
 
-import React from 'react';
-import { FormField } from '../types';
+import React from "react";
+import { FormField } from "../types";
 
 interface FormInputProps {
   field: FormField;
@@ -16,15 +16,19 @@ export const FormInput: React.FC<FormInputProps> = ({
   field,
   value,
   onChange,
-  error
+  error,
 }) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     let newValue: any = e.target.value;
 
     // Convert to appropriate type
-    if (field.type === 'number') {
-      newValue = e.target.value === '' ? '' : Number(e.target.value);
-    } else if (field.type === 'boolean') {
+    if (field.type === "number") {
+      newValue = e.target.value === "" ? "" : Number(e.target.value);
+    } else if (field.type === "boolean") {
       newValue = (e.target as HTMLInputElement).checked;
     }
 
@@ -33,12 +37,12 @@ export const FormInput: React.FC<FormInputProps> = ({
 
   const renderInput = () => {
     switch (field.type) {
-      case 'number':
+      case "number":
         return (
           <input
             type="number"
             className="qmeasure-form-input"
-            value={value ?? field.default ?? ''}
+            value={value ?? field.default ?? ""}
             onChange={handleChange}
             min={field.min}
             max={field.max}
@@ -47,7 +51,7 @@ export const FormInput: React.FC<FormInputProps> = ({
           />
         );
 
-      case 'boolean':
+      case "boolean":
         return (
           <label className="qmeasure-checkbox-label">
             <input
@@ -60,14 +64,14 @@ export const FormInput: React.FC<FormInputProps> = ({
           </label>
         );
 
-      case 'select':
+      case "select":
         return (
           <select
             className="qmeasure-form-input"
-            value={value ?? field.default ?? ''}
+            value={value ?? field.default ?? ""}
             onChange={handleChange}
           >
-            {field.options?.map(opt => (
+            {field.options?.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -75,24 +79,24 @@ export const FormInput: React.FC<FormInputProps> = ({
           </select>
         );
 
-      case 'textarea':
+      case "textarea":
         return (
           <textarea
             className="qmeasure-form-input qmeasure-textarea"
-            value={value ?? field.default ?? ''}
+            value={value ?? field.default ?? ""}
             onChange={handleChange}
             rows={3}
             placeholder={field.help}
           />
         );
 
-      case 'text':
+      case "text":
       default:
         return (
           <input
             type="text"
             className="qmeasure-form-input"
-            value={value ?? field.default ?? ''}
+            value={value ?? field.default ?? ""}
             onChange={handleChange}
             placeholder={field.help}
           />
@@ -101,7 +105,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   };
 
   // For boolean fields, don't show separate label
-  if (field.type === 'boolean') {
+  if (field.type === "boolean") {
     return (
       <div className="qmeasure-form-group">
         {renderInput()}
@@ -117,6 +121,15 @@ export const FormInput: React.FC<FormInputProps> = ({
         {field.label}
         {field.required && <span className="qmeasure-required">*</span>}
         {field.unit && <span className="qmeasure-unit"> ({field.unit})</span>}
+        {field.help && (
+          <span
+            className="qmeasure-help-icon"
+            title={field.help}
+            aria-label={field.help}
+          >
+            ?
+          </span>
+        )}
       </label>
       {renderInput()}
       {field.help && <div className="qmeasure-form-help">{field.help}</div>}

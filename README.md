@@ -6,14 +6,27 @@ A JupyterLab extension providing a beginner-friendly GUI for the [MeasureIt](htt
 
 ## Features
 
-**Phase 1: MVP - Static Code Generator**
+### Code Generation
 
-- 📊 Support for Sweep0D, Sweep1D, Sweep2D, and SimulSweep
-- 📝 Template-based code generation
-- ⚡ One-click code insertion into Jupyter cells
-- 🔧 Manual parameter entry with client-side validation
-- 💾 Form persistence via localStorage
-- 📋 Copy to clipboard fallback option
+- 📊 **Complete Sweep Support** - Forms for Sweep0D, Sweep1D, Sweep2D, and SimulSweep
+- 📝 **Smart Code Templates** - Generates production-ready Python code with proper syntax
+- ⚡ **One-Click Insertion** - Insert generated code directly into active notebook cells
+- 🔧 **Flexible Validation** - Client-side validation that won't block code generation
+- 🎯 **Custom Parameters** - Add arbitrary keyword arguments to sweep constructors
+
+### User Experience
+
+- 💾 **Form Persistence** - Automatically saves form inputs to localStorage
+- 🔄 **Reset to Defaults** - Clear saved values with one click
+- ❓ **Inline Help** - Hover over (?) icons to see parameter descriptions
+- 📋 **Copy to Clipboard** - Alternative insertion method when cell insertion fails
+
+### Notebook Integration
+
+- 📑 **Table of Contents** - Automatic detection and listing of all sweeps in your notebook
+- 🔍 **Sweep Inspector** - Right sidebar panel showing detailed sweep parameters
+- 🌳 **Tree-Sitter Parser** - Robust Python parsing for accurate sweep detection
+- 🏷️ **Type Icons** - Visual indicators for different sweep types (📍📊🗺️🔄)
 
 ## Requirements
 
@@ -67,13 +80,102 @@ jlpm watch
 jupyter lab
 ```
 
-## Usage
+## Quick Start
 
-1. Open JupyterLab
-2. Look for "Sweep Manager" in the left sidebar
-3. Select your sweep type (Sweep0D, Sweep1D, Sweep2D, or SimulSweep)
-4. Fill in the parameters
-5. Click "Insert Code" to add the sweep code to a new cell
+### Basic Usage
+
+1. **Open JupyterLab** and create or open a notebook
+2. **Find "Sweep Manager"** in the left sidebar
+3. **Select sweep type** using the tabs (Sweep0D, 1D, 2D, or SimulSweep)
+4. **Fill in parameters** - hover over (?) icons for help
+5. **Click "Generate Code"** to insert into the active cell
+6. **Run the cell** (Shift+Enter) to execute your sweep
+
+### Example: Creating a 1D Gate Sweep
+
+```python
+# 1. In the Sweep1D tab, fill in:
+Name: gate_sweep
+Set Parameter: station.dac.ch1
+Start: -1
+Stop: 1
+Step: 0.1
+Follow Parameters: station.dmm.voltage, station.lockin.X
+
+# 2. Click "Generate Code" - this is inserted:
+set_param = station.dac.ch1
+
+gate_sweep = Sweep1D(
+    set_param=set_param,
+    start=-1,
+    stop=1,
+    step=0.1,
+    save_data=True,
+    plot_data=True
+)
+
+gate_sweep.follow_param(station.dmm.voltage)
+gate_sweep.follow_param(station.lockin.X)
+
+gate_sweep.start()
+
+# 3. Run the cell to execute the sweep
+```
+
+### Next Steps
+
+- Check the **Table of Contents** at the bottom of the Sweep Manager to see all detected sweeps
+- Click on any sweep name to view its details in the **right sidebar**
+- Use **"Reset to Defaults"** button to clear saved form values
+- See [USAGE.md](USAGE.md) for comprehensive documentation
+
+## Documentation
+
+- **[USAGE.md](USAGE.md)** - Comprehensive user guide with examples
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development setup and contribution guidelines
+- **[TODO.md](TODO.md)** - Development roadmap and progress tracking
+
+## Supported Sweep Types
+
+| Sweep Type     | Use Case                            | Example                                 |
+| -------------- | ----------------------------------- | --------------------------------------- |
+| **Sweep0D**    | Point measurements without sweeping | Measure current at fixed voltage        |
+| **Sweep1D**    | 1D parameter sweeps                 | Gate voltage sweep from -1V to 1V       |
+| **Sweep2D**    | 2D nested sweeps                    | Gate voltage vs. magnetic field map     |
+| **SimulSweep** | Simultaneous multi-parameter sweeps | Sweep two gates while maintaining ratio |
+
+## Key Features Explained
+
+### Follow Parameters
+
+Measure additional parameters at each sweep point without controlling them:
+
+```python
+# Follow parameters are measured but not swept
+gate_sweep.follow_param(station.dmm.voltage)
+gate_sweep.follow_param(station.lockin.X)
+```
+
+### Custom Parameters
+
+Pass arbitrary keyword arguments to sweep constructors:
+
+```python
+# Add custom metadata or configuration
+s_1D = Sweep1D(
+    ...,
+    temperature=300,      # Custom parameter
+    sample_name="DeviceA" # Custom parameter
+)
+```
+
+### Form Persistence
+
+Your form inputs are automatically saved to browser localStorage and restored when you reopen JupyterLab. Click "Reset to Defaults" to clear saved values.
+
+### Table of Contents
+
+The extension automatically detects sweep objects in your notebook using tree-sitter parsing. Click any sweep in the ToC to view its configuration in the right sidebar.
 
 ## Contributing
 

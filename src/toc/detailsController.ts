@@ -2,9 +2,9 @@
  * Controller for managing the sweep details panel
  */
 
-import { JupyterFrontEnd } from '@jupyterlab/application';
-import { SweepDetailsPanel } from './panel';
-import { ParsedSweep } from './parser';
+import { JupyterFrontEnd } from "@jupyterlab/application";
+import { SweepDetailsPanel } from "./panel";
+import { ParsedSweep } from "./parser";
 
 /**
  * Singleton controller for sweep details panel
@@ -35,9 +35,9 @@ export class SweepDetailsController {
     this.panel = new SweepDetailsPanel();
 
     // Add panel to right sidebar
-    app.shell.add(this.panel, 'right', { rank: 700 });
+    app.shell.add(this.panel, "right", { rank: 700 });
 
-    console.log('[Sweep Details] Controller initialized');
+    console.log("[Sweep Details] Controller initialized");
   }
 
   /**
@@ -45,7 +45,7 @@ export class SweepDetailsController {
    */
   showSweep(sweep: ParsedSweep, notebookPath: string): void {
     if (!this.panel || !this.app) {
-      console.warn('[Sweep Details] Controller not initialized');
+      console.warn("[Sweep Details] Controller not initialized");
       return;
     }
 
@@ -58,7 +58,7 @@ export class SweepDetailsController {
     // Activate the panel (make it visible)
     this.app.shell.activateById(this.panel.id);
 
-    console.log('[Sweep Details] Showing sweep:', sweep.name);
+    console.log("[Sweep Details] Showing sweep:", sweep.name);
   }
 
   /**
@@ -68,7 +68,7 @@ export class SweepDetailsController {
     if (this.currentNotebook === path && this.panel) {
       this.panel.clear();
       this.currentNotebook = null;
-      console.log('[Sweep Details] Cleared for notebook:', path);
+      console.log("[Sweep Details] Cleared for notebook:", path);
     }
   }
 
@@ -93,6 +93,6 @@ export class SweepDetailsController {
     }
     this.app = null;
     this.currentNotebook = null;
-    console.log('[Sweep Details] Controller deactivated');
+    console.log("[Sweep Details] Controller deactivated");
   }
 }

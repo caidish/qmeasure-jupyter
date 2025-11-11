@@ -2,8 +2,8 @@
  * React components for rendering sweep headings in Table of Contents
  */
 
-import React from 'react';
-import { ParsedSweep } from './parser';
+import React from "react";
+import { ParsedSweep } from "./parser";
 
 interface SweepHeadingViewProps {
   sweep: ParsedSweep;
@@ -13,7 +13,10 @@ interface SweepHeadingViewProps {
 /**
  * Polished sweep heading component with structured layout
  */
-export const SweepHeadingView: React.FC<SweepHeadingViewProps> = ({ sweep, icon }) => {
+export const SweepHeadingView: React.FC<SweepHeadingViewProps> = ({
+  sweep,
+  icon,
+}) => {
   const { type, name, metrics, flags, complete } = sweep;
 
   // Build metrics display based on sweep type
@@ -21,44 +24,44 @@ export const SweepHeadingView: React.FC<SweepHeadingViewProps> = ({ sweep, icon 
     const parts: string[] = [];
 
     switch (type) {
-      case 'sweep0d':
+      case "sweep0d":
         if (metrics.maxTime) parts.push(`max ${metrics.maxTime} s`);
         if (metrics.interDelay) parts.push(`Δt ${metrics.interDelay} s`);
         if (metrics.plotBin) parts.push(`bin ${metrics.plotBin}`);
         break;
 
-      case 'sweep1d':
-        const param = metrics.setParam || '…';
-        const start = metrics.start || '…';
-        const stop = metrics.stop || '…';
-        const step = metrics.step || '…';
+      case "sweep1d":
+        const param = metrics.setParam || "…";
+        const start = metrics.start || "…";
+        const stop = metrics.stop || "…";
+        const step = metrics.step || "…";
         parts.push(`${param} ${start} → ${stop} @ ${step}`);
         break;
 
-      case 'sweep2d':
+      case "sweep2d":
         if (metrics.innerSweep) parts.push(`inner:${metrics.innerSweep}`);
         if (metrics.outerSweep) parts.push(`outer:${metrics.outerSweep}`);
         break;
 
-      case 'simulsweep':
-        parts.push('simultaneous');
+      case "simulsweep":
+        parts.push("simultaneous");
         break;
 
-      case 'sweepqueue':
-        parts.push('sweep queue');
+      case "sweepqueue":
+        parts.push("sweep queue");
         break;
     }
 
-    return parts.length > 0 ? parts.join(' · ') : '…';
+    return parts.length > 0 ? parts.join(" · ") : "…";
   };
 
   // Build flags display
   const renderFlags = () => {
     const badges: string[] = [];
 
-    if (flags.bidirectional) badges.push('↔ bidir');
-    if (flags.continual) badges.push('∞ cont');
-    if (flags.saveData) badges.push('💾 save');
+    if (flags.bidirectional) badges.push("↔ bidir");
+    if (flags.continual) badges.push("∞ cont");
+    if (flags.saveData) badges.push("💾 save");
 
     return badges;
   };
@@ -84,7 +87,10 @@ export const SweepHeadingView: React.FC<SweepHeadingViewProps> = ({ sweep, icon 
         </span>
       )}
       {!complete && (
-        <span className="jp-TableOfContents-sweepIncomplete" title="Some parameters missing">
+        <span
+          className="jp-TableOfContents-sweepIncomplete"
+          title="Some parameters missing"
+        >
           ⚠
         </span>
       )}
@@ -101,58 +107,60 @@ export function formatSweepAsText(sweep: ParsedSweep, icon: string): string {
 
   // Add metrics based on type
   switch (type) {
-    case 'sweep0d':
+    case "sweep0d":
       const sweep0dMetrics: string[] = [];
       if (metrics.maxTime) sweep0dMetrics.push(`max ${metrics.maxTime} s`);
       if (metrics.interDelay) sweep0dMetrics.push(`Δt ${metrics.interDelay} s`);
       if (metrics.plotBin) sweep0dMetrics.push(`bin ${metrics.plotBin}`);
       if (sweep0dMetrics.length > 0) {
-        parts.push('—', sweep0dMetrics.join(' · '));
+        parts.push("—", sweep0dMetrics.join(" · "));
       }
       break;
 
-    case 'sweep1d':
-      const param = metrics.setParam || '…';
-      const start = metrics.start || '…';
-      const stop = metrics.stop || '…';
-      const step = metrics.step || '…';
-      parts.push('—', `${param} ${start} → ${stop} @ ${step}`);
+    case "sweep1d":
+      const param = metrics.setParam || "…";
+      const start = metrics.start || "…";
+      const stop = metrics.stop || "…";
+      const step = metrics.step || "…";
+      parts.push("—", `${param} ${start} → ${stop} @ ${step}`);
       break;
 
-    case 'sweep2d':
+    case "sweep2d":
       const sweep2dMetrics: string[] = [];
-      if (metrics.innerSweep) sweep2dMetrics.push(`inner:${metrics.innerSweep}`);
-      if (metrics.outerSweep) sweep2dMetrics.push(`outer:${metrics.outerSweep}`);
+      if (metrics.innerSweep)
+        sweep2dMetrics.push(`inner:${metrics.innerSweep}`);
+      if (metrics.outerSweep)
+        sweep2dMetrics.push(`outer:${metrics.outerSweep}`);
       if (sweep2dMetrics.length > 0) {
-        parts.push('—', sweep2dMetrics.join(' | '));
+        parts.push("—", sweep2dMetrics.join(" | "));
       }
       break;
 
-    case 'simulsweep':
-      parts.push('—', 'simultaneous');
+    case "simulsweep":
+      parts.push("—", "simultaneous");
       break;
 
-    case 'sweepqueue':
-      parts.push('—', 'sweep queue');
+    case "sweepqueue":
+      parts.push("—", "sweep queue");
       break;
   }
 
   // Add flags
   const flagBadges: string[] = [];
-  if (flags.bidirectional) flagBadges.push('↔');
-  if (flags.continual) flagBadges.push('∞');
-  if (flags.saveData) flagBadges.push('💾');
+  if (flags.bidirectional) flagBadges.push("↔");
+  if (flags.continual) flagBadges.push("∞");
+  if (flags.saveData) flagBadges.push("💾");
 
   if (flagBadges.length > 0) {
-    parts.push('·', flagBadges.join(' '));
+    parts.push("·", flagBadges.join(" "));
   }
 
   // Add warning if incomplete
   if (!complete) {
-    parts.push('⚠');
+    parts.push("⚠");
   }
 
-  return parts.join(' ');
+  return parts.join(" ");
 }
 
 /**
@@ -161,7 +169,7 @@ export function formatSweepAsText(sweep: ParsedSweep, icon: string): string {
 export function formatSweepFallback(
   type: string,
   name: string,
-  icon: string
+  icon: string,
 ): string {
   return `${icon} ${name} — …`;
 }

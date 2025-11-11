@@ -340,3 +340,48 @@
   font-size: 11px;
   margin-top: 4px;
 }
+
+/* Form actions (button row) */
+.qmeasure-form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.qmeasure-button-secondary {
+  background-color: var(--jp-layout-color2);
+  color: var(--jp-ui-font-color1);
+  border: 1px solid var(--jp-border-color2);
+}
+
+.qmeasure-button-secondary:hover {
+  background-color: var(--jp-layout-color3);
+  border-color: var(--jp-border-color1);
+}
+
+/* Help icon tooltip */
+.qmeasure-help-icon {
+  display: inline-block;
+  margin-left: 6px;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--jp-ui-font-color2);
+  background-color: var(--jp-layout-color2);
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 50%;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.qmeasure-help-icon:hover {
+  color: var(--jp-brand-color1);
+  background-color: var(--jp-layout-color3);
+  border-color: var(--jp-brand-color1);
+  transform: scale(1.1);
+}

@@ -1,68 +1,89 @@
-# QMeasure Jupyter - Development TODO
+# QMeasure Jupyter – MeasureIt Runtime Support Roadmap
 
-## ✅ Week 1: Environment Setup & Scaffold (COMPLETED)
-- [x] Initialize project with modern hybrid structure
-- [x] Set up TypeScript/React/webpack build pipeline
-- [x] Create basic sidebar panel that renders in JupyterLab
-- [x] Verify build workflow: `jlpm build` → `pip install -e .`
-- [x] Fixed Yarn PnP compatibility issue (switched to node-modules)
-- [x] Successfully installed and verified extension in JupyterLab
+## Phase 1 – Queue Infrastructure ✅
+- [x] **Queue Store (`src/queue/queueStore.ts`)**
+  - Export singleton (`useQueueStore`) with state `{ entries: QueueEntry[], selectedId?: string }`.
+  - Actions: `addOrReplace(entry: QueueEntry)`, `remove(id)`, `move(from, to)`, `clear()`, `select(id)`.
+  - `QueueEntry` interface lives in new `src/types/queue.ts`.
+- [x] **Python Export (`src/queue/export.ts`)**
+  - Implement `exportSweepQueue(entries: QueueEntry[]): string`.
+  - Ensure each entry injects its `code.setup`; append queue body:
+    ```python
+    from measureit.tools.sweep_queue import SweepQueue, DatabaseEntry
+    sq = SweepQueue()
+    # ...
+    sq += (DatabaseEntry(...), sweep_obj)
+    ```
+  - When entry has deferred `code.start`, append after DB block.
+- [x] **Command Registration (`src/plugin.ts`)**
+  - Add command `qmeasure:insert-queue`:
+    - Fetch entries from store.
+    - Generate script via `exportSweepQueue`.
+    - Insert into active notebook cell (reuse helper from `SweepManager`).
 
-## ✅ Week 2: Core UI Components (COMPLETED)
-- [x] Build SweepManager with tabbed interface
-- [x] Create forms for Sweep0D, Sweep1D, Sweep2D
-- [x] Implement text inputs for all parameters
-- [x] Add client-side validation (numbers, required fields, non-blocking)
-- [x] Add "Custom Parameters" key-value component
+## Phase 2 – Sweep Manager Integration
+- [ ] **Form Serialisation**
+  - Each form (`src/components/Sweep0DForm.tsx`, etc.) exports `serialize()` & accepts `initialState`.
+  - Update `SweepManager.tsx`:
+    - Maintain `pendingStartCode` & `pendingEntryId`.
+    - Add “Add to Queue” button -> generate `renderSweepCode(code, includeStart=false)` and push to store.
+- [ ] **Database Coordination (`src/components/DatabaseForm.tsx`)**
+  - Props: `pendingStart?: string`, `queueId?: string`.
+  - On “Add to Queue”, append DB block + `pendingStart` to matching queue entry (via store update).
+- [ ] **Hydration Context**
+  - Introduce `SweepFormContext` in `src/components/SweepManagerContext.tsx` with `loadForm(tab: SweepType | 'fast', state: any)`.
+  - Forms consume context to apply external state (used by queue editor).
 
-## ✅ Week 3: Code Generation & Integration (COMPLETED)
-- [x] Implement static code templates
-- [x] Add template parameter substitution with _required placeholders
-- [x] Integrate JupyterLab cell insertion API
-- [x] Added toPython() helper for proper Python literal conversion
-- [x] Non-blocking validation - generates code even with missing required fields
+## Phase 3 – Queue Manager UI
+- [ ] **Widget Mount (`src/queue/QueueManagerWidget.tsx`)**
+  - ReactWidget added in plugin activate: `app.shell.add(widget, 'right', { rank: 620 })`.
+  - Subscribe to queue store for updates.
+- [ ] **List Component (`QueueManager.tsx`)**
+  - Render entries with icon, name, optional database info.
+  - Actions:
+    - Edit: call `loadForm` + `select(entry.id)`.
+    - Delete: `store.remove`.
+    - Duplicate: clone entry with new id.
+    - Reorder: implement drag-and-drop (`react-beautiful-dnd`) or up/down buttons.
+  - Footer buttons: “Insert Queue Code” (dispatch command), “Run Queue” (TODO runtime), “Clear Queue”.
+- [ ] **Notifications**
+  - Integrate JupyterLab `showNotification` for add/remove/reorder feedback.
 
-## 📅 Week 4: Polish & Release
-- [x] Custom Parameters component (key-value pairs)
-- [x] Integrate custom params into all sweep forms (Sweep0D, Sweep1D, Sweep2D, SimulSweep)
-- [x] Update all code generators to emit custom_param() calls
-- [ ] Add tooltips and help text
-- [ ] Implement form persistence (localStorage)
-- [ ] Write basic documentation
-- [ ] Package and test installation
-- [ ] Release v0.1.0 to lab for testing
+## Phase 4 – Fast Sweeps Tab
+- [ ] **UI (`src/components/FastSweepsForm.tsx`)**
+  - Add new tab in `SweepManager.tsx` named “Fast Sweeps”.
+  - Provide selector between:
+    1. **Sweepto** – fields: `parameterPath`, `setpoint`, `step`.
+       - Generate Sweep1D using `station.{parameter}`; comment includes `current_value = station...get()`.
+       - Defaults: `save_data=False`, `plot_data=True`, `plot_bin=1`.
+    2. **GateLimitTest** – inputs as per quick-start (set param, track param, `max_I`, `limit`, `step`, `inter_delay`); emit GateLeakage snippet.
+  - Both options deliver `SweepCode` + integration with Add-to-Queue.
+- [ ] **Code Generators (`src/services/CodeGenerator.ts`)**
+  - Add `generateSweepto(params)` and `generateGateLeakage(params)` returning `{ setup, start }`.
+  - Update exports & type definitions in `src/types/index.d.ts`.
 
-## Current Status
+## Phase 5 – Parser & Details Panel
+- [ ] **Tree-Sitter Enhancements (`src/toc/parser.ts`)**
+  - Detect queue scripts (`SweepQueue()` pattern) and map sweeps back to queue entries via comments or generated identifiers.
+  - Ensure fast sweep templates parse (positional args).
+- [ ] **Details Panel (`src/toc/panel.tsx`)**
+  - Display “Queued (position N)” badge when sweep belongs to queue.
+  - Show database info if associated.
 
-### What's Working
-- ✅ Complete JupyterLab extension with sidebar panel
-- ✅ Sweep0D, Sweep1D, Sweep2D, SimulSweep forms with all MeasureIt parameters
-- ✅ Code generation with _required placeholders for missing fields
-- ✅ Direct insertion into Jupyter notebook cells
-- ✅ Non-blocking validation (shows errors but still generates code)
-- ✅ Proper Python boolean/literal conversion (True/False)
-- ✅ SimulSweep form with exactly 2 parameters (required)
-- ✅ Deferred start infrastructure for database integration
-- ✅ Right sidebar panel for sweep details display
-- ✅ Tree-sitter Python parser for sweep detection in notebooks
-- ✅ Table of Contents with sweep entries (🔄 icon for SimulSweep)
-- ✅ Positional and keyword argument detection
-- ✅ Sweep2D list parameter support
-- ✅ Dictionary variable tracking for SimulSweep parameter extraction
-- ✅ SimulSweep details panel with parameter table
-- ✅ Custom Parameters component with key-value pairs (all forms integrated)
-- ✅ Code generators emit sweep.custom_param() calls for all sweep types
+## Phase 6 – Testing & Documentation
+- [ ] **Automated Tests**
+  - Add queue store unit tests under `tests/queueStore.test.ts`.
+  - Snapshot tests for `exportSweepQueue` outputs (with/without DB).
+  - Jest tests for fast sweep generators.
+- [ ] **Manual QA Checklist**
+  - Document in `USAGE.md`: build mixed queue, edit entries, export script, run in MeasureIt environment.
+- [ ] **Docs**
+  - Update README/USAGE with queue workflow, fast sweeps, runtime notes.
+  - Add tooltips inside Queue Manager + Fast Sweeps form.
 
-### Known Issues
-- None currently blocking functionality
-
-### Next Steps
-1. Test the extension in JupyterLab (hard refresh: Cmd+Shift+R)
-2. Verify generated code works with MeasureIt
-3. Optional: Add tooltips/help text (Week 4)
-4. Optional: Implement form persistence (Week 4)
-
-## Notes
-- Using node-modules instead of Yarn PnP for JupyterLab compatibility
-- TypeScript configured with `skipLibCheck: true` to avoid dependency type errors
-- Extension runs in development mode with symlinked labextension directory
+## Phase 7 – Release Preparation
+- [ ] `jlpm build`
+- [ ] `pip install -e .`
+- [ ] `jupyter labextension list`
+- [ ] Bump version (`package.json`, `pyproject.toml`)
+- [ ] Tag release + update changelog summarising queue manager & fast sweeps.
