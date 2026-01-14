@@ -149,6 +149,195 @@ If you see type errors from dependencies, make sure `skipLibCheck: true` is set 
 - Follow JupyterLab extension best practices
 - Use CSS modules with JupyterLab theme variables
 
+## Publishing and Release
+
+### Prerequisites
+
+- Clean working directory (no uncommitted changes)
+- Updated version number in `package.json`
+- All tests passing
+- Documentation up to date
+
+### Build Production Bundle
+
+Before publishing, build the prebuilt labextension:
+
+```bash
+# Clean all build artifacts
+jlpm clean:all
+
+# Build production bundle (minified, no source maps)
+jlpm build:prod
+```
+
+Verify the labextension directory contains compiled assets:
+
+```bash
+ls qmeasure_jupyter/labextension/
+# Should contain: package.json, static/, schemas/
+
+ls qmeasure_jupyter/labextension/static/
+# Should contain: style.js, *.js chunks, *.wasm files, etc.
+```
+
+### Build Distribution Packages
+
+Build the wheel and source distribution:
+
+```bash
+# Install build tool if needed
+pip install build
+
+# Build packages
+python -m build
+```
+
+This creates:
+- `dist/qmeasure_jupyter-X.Y.Z-py3-none-any.whl` (wheel)
+- `dist/qmeasure_jupyter-X.Y.Z.tar.gz` (source distribution)
+
+### Verify Package Contents
+
+Inspect the wheel to ensure all assets are included:
+
+```bash
+# List wheel contents
+python -m zipfile -l dist/qmeasure_jupyter-*.whl | grep labextensions
+
+# Should show:
+# - share/jupyter/labextensions/qmeasure-jupyter/package.json
+# - share/jupyter/labextensions/qmeasure-jupyter/static/style.js
+# - share/jupyter/labextensions/qmeasure-jupyter/static/*.js
+# - share/jupyter/labextensions/qmeasure-jupyter/static/*.wasm
+# - share/jupyter/labextensions/qmeasure-jupyter/install.json
+# - share/jupyter/labextensions/qmeasure-jupyter/schemas/
+```
+
+### Test Installation
+
+Test the package in a clean environment:
+
+```bash
+# Create test environment
+conda create -n test-qmeasure python=3.10 jupyterlab
+conda activate test-qmeasure
+
+# Install from wheel
+pip install dist/qmeasure_jupyter-*.whl
+
+# Verify extension is recognized
+jupyter labextension list
+# Should show: qmeasure-jupyter vX.Y.Z enabled OK (python, qmeasure_jupyter)
+
+# Test in JupyterLab
+jupyter lab
+# Verify: Sweep Manager appears in left sidebar, no console errors
+```
+
+### Publish to PyPI
+
+⚠️ **Important**: Test on TestPyPI first!
+
+#### 1. TestPyPI (Recommended for first-time publishing)
+
+```bash
+# Install twine
+pip install twine
+
+# Upload to TestPyPI
+twine upload --repository testpypi dist/*
+
+# Test installation from TestPyPI
+pip install --index-url https://test.pypi.org/simple/ qmeasure-jupyter
+```
+
+#### 2. PyPI (Production)
+
+```bash
+# Upload to PyPI
+twine upload dist/*
+```
+
+### Complete Release Workflow
+
+```bash
+# 1. Ensure clean state
+git status  # Should be clean
+git pull origin main
+
+# 2. Update version (edit package.json)
+# Update "version": "X.Y.Z"
+
+# 3. Commit version bump
+git add package.json
+git commit -m "Bump version to X.Y.Z"
+git push origin main
+
+# 4. Create git tag
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+
+# 5. Clean and build
+jlpm clean:all
+jlpm install
+jlpm build:prod
+
+# 6. Build distributions
+python -m build
+
+# 7. Test locally
+pip install --force-reinstall dist/qmeasure_jupyter-*.whl
+jupyter labextension list
+# Quick smoke test
+
+# 8. Upload to PyPI
+twine upload dist/*
+
+# 9. Verify on PyPI
+# Check: https://pypi.org/project/qmeasure-jupyter/
+
+# 10. Test installation from PyPI
+pip install --upgrade qmeasure-jupyter
+```
+
+### Version Management
+
+The project uses version from `package.json`. When bumping version:
+
+1. Update `package.json`: `"version": "X.Y.Z"`
+2. The Python package will automatically use this version (via `hatch-nodejs-version`)
+3. Follow semantic versioning:
+   - MAJOR: Breaking changes
+   - MINOR: New features (backward compatible)
+   - PATCH: Bug fixes
+
+### Troubleshooting Publishing
+
+**Issue**: `ensured-targets` not found during build
+
+```bash
+# Make sure to run jlpm build:prod before python -m build
+jlpm build:prod
+```
+
+**Issue**: Old files in wheel
+
+```bash
+# Clean everything and rebuild
+jlpm clean:all
+rm -rf dist/ build/ *.egg-info
+jlpm build:prod
+python -m build
+```
+
+**Issue**: Extension not showing after pip install
+
+```bash
+# Check if labextension files are in the right place
+python -c "import qmeasure_jupyter; print(qmeasure_jupyter.__file__)"
+# Then check: {path}/share/jupyter/labextensions/qmeasure-jupyter/
+```
+
 ## Next Steps
 
 Week 2 tasks (from TODO_plugin.md):

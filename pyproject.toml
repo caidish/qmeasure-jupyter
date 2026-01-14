@@ -42,11 +42,10 @@ fields = ["description", "authors", "urls"]
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["qmeasure_jupyter/labextension"]
-exclude = [".github", "binder"]
+exclude = [".github", "binder", "node_modules", "lib", ".eslintcache", ".stylelintcache", ".yarn", "*.ipynb"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "qmeasure_jupyter/labextension" = "share/jupyter/labextensions/qmeasure-jupyter"
-"install.json" = "share/jupyter/labextensions/qmeasure-jupyter/install.json"
 
 [tool.hatch.build.hooks.version]
 path = "qmeasure_jupyter/_version.py"

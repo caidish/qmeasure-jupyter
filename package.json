@@ -1,6 +1,6 @@
 {
   "name": "qmeasure-jupyter",
-  "version": "0.2.0",
+  "version": "1.0.1",
   "description": "JupyterLab extension for QMeasure/MeasureIt sweep management",
   "keywords": [
     "jupyter",
