@@ -11,6 +11,10 @@ node_modules/
 dist/
 qmeasure_jupyter/labextension
 qmeasure_jupyter/_version.py
+
+# Yarn
+.yarn/cache
+.yarn/install-state.gz
 *.pyc
 __pycache__/
 build/
